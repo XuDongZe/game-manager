@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import unzipper from "unzipper";
-import { deploy, rollback } from "../services/deployer";
+import { deploy, rollback, sanitizeName } from "../services/deployer";
 import logger from "../services/logger";
 
 const router = Router();
@@ -84,8 +84,8 @@ router.post("/", (req: Request, res: Response) => {
           if (fs.statSync(single).isDirectory()) contentRoot = single;
         }
 
-        const safeUser = userId.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        const safeGame = gameName.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const safeUser = sanitizeName(userId);
+        const safeGame = sanitizeName(gameName);
         const lockKey = `${safeUser}/${safeGame}`;
         await withLock(lockKey, () => deploy(userId, gameName, contentRoot, sse, displayName));
         done(true, `${safeUser}/${safeGame}`);

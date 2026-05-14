@@ -27,7 +27,7 @@ function send(sse: SsePush, line: string) {
   sse(line);
 }
 
-function sanitizeName(name: string): string {
+export function sanitizeName(name: string): string {
   const result = name.toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   return result || "user";
 }
