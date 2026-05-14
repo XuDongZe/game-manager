@@ -98,7 +98,7 @@ export default function GameDetail() {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h1 style={{ fontSize: '32px', margin: '0 0 16px 0' }}>
-              {game.locked && <span title="已锁定，禁止删除" style={{ marginRight: '8px', fontSize: '24px' }}>🔒</span>}
+              {!!game.locked && <span title="已锁定，禁止删除" style={{ marginRight: '8px', fontSize: '24px' }}>🔒</span>}
               {game.name}
             </h1>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -106,10 +106,10 @@ export default function GameDetail() {
                 type="button"
                 onClick={handleToggleLock}
                 disabled={lockLoading}
-                title={game.locked ? '解锁游戏（解锁后可删除）' : '锁定游戏（防止误删）'}
+                title={!!game.locked ? '解锁游戏（解锁后可删除）' : '锁定游戏（防止误删）'}
                 style={{
                   padding: '8px 16px',
-                  background: game.locked ? '#f59e0b' : '#6b7280',
+                  background: !!game.locked ? '#f59e0b' : '#6b7280',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '4px',
@@ -118,20 +118,20 @@ export default function GameDetail() {
                   opacity: lockLoading ? 0.7 : 1,
                 }}
               >
-                {lockLoading ? '处理中...' : game.locked ? '🔓 解锁' : '🔒 锁定'}
+                {lockLoading ? '处理中...' : !!game.locked ? '🔓 解锁' : '🔒 锁定'}
               </button>
               <button
                 type="button"
                 onClick={handleDelete}
-                disabled={deleteLoading || game.locked}
-                title={game.locked ? '请先解锁才能删除' : '删除游戏'}
+                disabled={deleteLoading || !!game.locked}
+                title={!!game.locked ? '请先解锁才能删除' : '删除游戏'}
                 style={{
                   padding: '8px 16px',
-                  background: game.locked ? '#e5e7eb' : '#ef4444',
-                  color: game.locked ? '#9ca3af' : '#fff',
+                  background: !!game.locked ? '#e5e7eb' : '#ef4444',
+                  color: !!game.locked ? '#9ca3af' : '#fff',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: (deleteLoading || game.locked) ? 'not-allowed' : 'pointer',
+                  cursor: (deleteLoading || !!game.locked) ? 'not-allowed' : 'pointer',
                   fontWeight: 'bold',
                   opacity: deleteLoading ? 0.7 : 1,
                 }}
