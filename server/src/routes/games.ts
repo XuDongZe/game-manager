@@ -12,6 +12,7 @@ interface Game {
   repo_path: string;
   www_path: string;
   created_at: string;
+  locked: number;
 }
 
 interface Version {
@@ -60,10 +61,11 @@ router.get("/:gameId(*)", (req: Request, res: Response) => {
 
 router.patch("/:gameId(*)", (req: Request, res: Response) => {
   const { gameId } = req.params;
-  const { name, tags, cover_url } = req.body as Partial<{
+  const { name, tags, cover_url, locked } = req.body as Partial<{
     name: string;
     tags: string[];
     cover_url: string;
+    locked: boolean;
   }>;
 
   const game = db.prepare("SELECT id FROM games WHERE id = ?").get(gameId);
@@ -81,6 +83,28 @@ router.patch("/:gameId(*)", (req: Request, res: Response) => {
   if (cover_url !== undefined) {
     db.prepare("UPDATE games SET cover_url = ? WHERE id = ?").run(cover_url, gameId);
   }
+  if (locked !== undefined) {
+    db.prepare("UPDATE games SET locked = ? WHERE id = ?").run(locked ? 1 : 0, gameId);
+  }
+
+  res.json({ ok: true });
+});
+
+router.delete("/:gameId(*)", (req: Request, res: Response) => {
+  const { gameId } = req.params;
+
+  const game = db.prepare("SELECT id, locked, repo_path, www_path FROM games WHERE id = ?").get(gameId) as Pick<Game, "id" | "locked" | "repo_path" | "www_path"> | undefined;
+  if (!game) {
+    res.status(404).json({ error: "游戏不存在" });
+    return;
+  }
+  if (game.locked) {
+    res.status(403).json({ error: "游戏已锁定，请先解锁再删除" });
+    return;
+  }
+
+  db.prepare("DELETE FROM versions WHERE game_id = ?").run(gameId);
+  db.prepare("DELETE FROM games WHERE id = ?").run(gameId);
 
   res.json({ ok: true });
 });

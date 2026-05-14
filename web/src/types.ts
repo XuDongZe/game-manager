@@ -19,6 +19,7 @@ export interface Game {
   cover_url: string | null;
   www_path: string;
   created_at: string;
+  locked: boolean;
 }
 
 export interface LogMessage {

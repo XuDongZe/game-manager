@@ -19,7 +19,8 @@ db.exec(`
     cover_url   TEXT,
     repo_path   TEXT NOT NULL,
     www_path    TEXT NOT NULL,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    locked      INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS versions (
@@ -37,5 +38,12 @@ db.exec(`
     UNIQUE(game_id, version_num)
   );
 `);
+
+// 迁移：为旧表补充 locked 列（幂等，列已存在时 SQLite 会抛错，忽略即可）
+try {
+  db.exec(`ALTER TABLE games ADD COLUMN locked INTEGER DEFAULT 0`);
+} catch {
+  // 列已存在，忽略
+}
 
 export default db;

@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Game, Version } from '../types';
 import VersionHistory from '../components/VersionHistory';
 
 export default function GameDetail() {
   const { gameId } = useParams<{ gameId: string }>();
+  const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lockLoading, setLockLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchGameData = useCallback(() => {
     if (!gameId) return;
@@ -30,6 +33,39 @@ export default function GameDetail() {
   useEffect(() => {
     fetchGameData();
   }, [fetchGameData]);
+
+  const handleToggleLock = useCallback(async () => {
+    if (!game || !gameId) return;
+    setLockLoading(true);
+    try {
+      await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked: !game.locked }),
+      });
+      await fetchGameData();
+    } finally {
+      setLockLoading(false);
+    }
+  }, [game, gameId, fetchGameData]);
+
+  const handleDelete = useCallback(async () => {
+    if (!game || !gameId) return;
+    if (!window.confirm(`确定要删除游戏「${game.name}」吗？\n\n此操作不可恢复，游戏数据和版本历史将被永久删除。`)) return;
+    if (!window.confirm(`再次确认：永久删除「${game.name}」？`)) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/games/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
+      if (res.ok) {
+        navigate('/');
+      } else {
+        const data = await res.json() as { error?: string };
+        alert(data.error ?? '删除失败');
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [game, gameId, navigate]);
 
   if (loading) {
     return <div>加载中...</div>;
@@ -61,15 +97,56 @@ export default function GameDetail() {
 
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <h1 style={{ fontSize: '32px', margin: '0 0 16px 0' }}>{game.name}</h1>
-            <a
-              href={`/games/${game.id}/`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ padding: '8px 24px', background: 'var(--success-color)', color: '#fff', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}
-            >
-              在线试玩 ↗
-            </a>
+            <h1 style={{ fontSize: '32px', margin: '0 0 16px 0' }}>
+              {game.locked && <span title="已锁定，禁止删除" style={{ marginRight: '8px', fontSize: '24px' }}>🔒</span>}
+              {game.name}
+            </h1>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={handleToggleLock}
+                disabled={lockLoading}
+                title={game.locked ? '解锁游戏（解锁后可删除）' : '锁定游戏（防止误删）'}
+                style={{
+                  padding: '8px 16px',
+                  background: game.locked ? '#f59e0b' : '#6b7280',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: lockLoading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  opacity: lockLoading ? 0.7 : 1,
+                }}
+              >
+                {lockLoading ? '处理中...' : game.locked ? '🔓 解锁' : '🔒 锁定'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteLoading || game.locked}
+                title={game.locked ? '请先解锁才能删除' : '删除游戏'}
+                style={{
+                  padding: '8px 16px',
+                  background: game.locked ? '#e5e7eb' : '#ef4444',
+                  color: game.locked ? '#9ca3af' : '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: (deleteLoading || game.locked) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  opacity: deleteLoading ? 0.7 : 1,
+                }}
+              >
+                {deleteLoading ? '删除中...' : '🗑️ 删除'}
+              </button>
+              <a
+                href={`/games/${game.id}/`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ padding: '8px 24px', background: 'var(--success-color)', color: '#fff', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}
+              >
+                在线试玩 ↗
+              </a>
+            </div>
           </div>
 
           <div style={{ marginBottom: '16px', color: '#4b5563', fontSize: '16px' }}>
@@ -100,9 +177,9 @@ export default function GameDetail() {
         </div>
       </div>
 
-      <VersionHistory 
-        gameId={game.id} 
-        versions={versions} 
+      <VersionHistory
+        gameId={game.id}
+        versions={versions}
         onRefresh={fetchGameData}
       />
     </div>
