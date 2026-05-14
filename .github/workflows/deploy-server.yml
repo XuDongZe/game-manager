@@ -49,10 +49,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            cd /opt/game-manager
-            cd server && npm ci --omit=dev
-            pm2 restart game-manager || pm2 start /opt/game-manager/server/dist/index.js \
-              --name game-manager \
-              --env production \
-              --log /var/log/game-manager/pm2.log
+            cd /opt/game-manager/server && npm ci --omit=dev
+            pm2 reload ecosystem.config.js --update-env || pm2 start /opt/game-manager/ecosystem.config.js
             pm2 save
