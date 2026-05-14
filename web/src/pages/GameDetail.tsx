@@ -62,9 +62,9 @@ export default function GameDetail() {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h1 style={{ fontSize: '32px', margin: '0 0 16px 0' }}>{game.name}</h1>
-            <a 
-              href={`/games/${game.user_name}/${game.name}/`} 
-              target="_blank" 
+            <a
+              href={`/games/${game.id}/`}
+              target="_blank"
               rel="noreferrer"
               style={{ padding: '8px 24px', background: 'var(--success-color)', color: '#fff', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}
             >
@@ -91,9 +91,10 @@ export default function GameDetail() {
       <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
         <h3 style={{ marginBottom: '16px', fontSize: '18px' }}>游戏预览</h3>
         <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', height: '600px', backgroundColor: '#000' }}>
-          <iframe 
-            src={`/games/${game.user_name}/${game.name}/`} 
+          <iframe
+            src={`/games/${game.id}/`}
             title={game.name}
+            sandbox="allow-scripts allow-same-origin"
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
         </div>

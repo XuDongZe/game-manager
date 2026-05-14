@@ -5,7 +5,7 @@ interface LogViewerProps {
   url: string;
   method?: 'GET' | 'POST';
   body?: BodyInit;
-  onComplete?: () => void;
+  onComplete?: (msg: LogMessage) => void;
   onError?: (err: string) => void;
 }
 
@@ -59,7 +59,7 @@ export default function LogViewer({ url, method = 'GET', body, onComplete, onErr
                   setLogs(prev => [...prev, data]);
                 }
                 if (data.done) {
-                  if (isMounted && onComplete) onComplete();
+                  if (isMounted && onComplete) onComplete(data);
                   return;
                 }
               } catch (e) {

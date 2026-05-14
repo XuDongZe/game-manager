@@ -26,4 +26,5 @@ export interface LogMessage {
   time?: string;
   done?: boolean;
   ok?: boolean;
+  gameId?: string;
 }

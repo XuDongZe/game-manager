@@ -25,8 +25,9 @@ router.post("/", (req: Request, res: Response) => {
     limits: { files: 1, fileSize: 600 * 1024 * 1024 },
   });
 
-  let userId   = "";
-  let gameName = "";
+  let userId      = "";
+  let gameName    = "";
+  let displayName = "";
   const extractedDir = path.join("/tmp", `extract-${uuidv4()}`);
   let zipPath = "";
 
@@ -40,14 +41,15 @@ router.post("/", (req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify({ message: line, time: new Date().toISOString() })}\n\n`);
   };
 
-  const done = (ok: boolean) => {
-    res.write(`data: ${JSON.stringify({ done: true, ok })}\n\n`);
+  const done = (ok: boolean, gameId?: string) => {
+    res.write(`data: ${JSON.stringify({ done: true, ok, gameId })}\n\n`);
     res.end();
   };
 
   bb.on("field", (name, val) => {
-    if (name === "userId")   userId   = val.trim();
-    if (name === "gameName") gameName = val.trim();
+    if (name === "userId")      userId      = val.trim();
+    if (name === "gameName")    gameName    = val.trim();
+    if (name === "displayName") displayName = val.trim();
   });
 
   bb.on("file", (_field, fileStream) => {
@@ -82,9 +84,11 @@ router.post("/", (req: Request, res: Response) => {
           if (fs.statSync(single).isDirectory()) contentRoot = single;
         }
 
-        const lockKey = `${userId}/${gameName}`;
-        await withLock(lockKey, () => deploy(userId, gameName, contentRoot, sse));
-        done(true);
+        const safeUser = userId.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const safeGame = gameName.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const lockKey = `${safeUser}/${safeGame}`;
+        await withLock(lockKey, () => deploy(userId, gameName, contentRoot, sse, displayName));
+        done(true, `${safeUser}/${safeGame}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         logger.error(`部署失败：${msg}`);

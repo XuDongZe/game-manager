@@ -39,7 +39,7 @@ export default function VersionHistory({ gameId, versions, onRefresh }: VersionH
               url={`/api/deploy/${gameId}/rollback`}
               method="POST"
               body={JSON.stringify({ version: rollbackVersion, operatorId: 'sys_ui' })}
-              onComplete={() => {
+              onComplete={(_msg) => {
                 alert('回滚成功');
                 setRollbackVersion(null);
                 onRefresh();

@@ -28,7 +28,8 @@ function send(sse: SsePush, line: string) {
 }
 
 function sanitizeName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  const result = name.toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return result || "user";
 }
 
 function exec(cmd: string, cwd?: string): string {
@@ -65,7 +66,7 @@ function validateExtractedFiles(dir: string): void {
   walk(dir);
 }
 
-function getOrCreateGame(userId: string, gameName: string): {
+function getOrCreateGame(userId: string, gameName: string, displayName: string): {
   gameId: string;
   repoPath: string;
   wwwPath: string;
@@ -89,7 +90,7 @@ function getOrCreateGame(userId: string, gameName: string): {
   db.prepare(`
     INSERT INTO games (id, name, user_name, repo_path, www_path)
     VALUES (?, ?, ?, ?, ?)
-  `).run(gameId, gameName, userId, repoPath, path.join(wwwPath, "live"));
+  `).run(gameId, displayName || gameName, userId, repoPath, path.join(wwwPath, "live"));
 
   return { gameId, repoPath, wwwPath, isNew: true };
 }
@@ -105,7 +106,8 @@ export async function deploy(
   userId: string,
   gameName: string,
   extractedDir: string,
-  sse: SsePush
+  sse: SsePush,
+  displayName?: string
 ): Promise<void> {
   const stagingDir = path.join("/tmp", `deploy-${uuidv4()}`);
   let versionId: number | null = null;
@@ -117,7 +119,7 @@ export async function deploy(
     validateExtractedFiles(extractedDir);
     send(sse, "文件校验通过");
 
-    const { gameId, repoPath, wwwPath, isNew } = getOrCreateGame(userId, gameName);
+    const { gameId, repoPath, wwwPath, isNew } = getOrCreateGame(userId, gameName, displayName ?? "");
     if (isNew) send(sse, `新游戏，已初始化 Git 仓库：${repoPath}`);
 
     const versionNum = getNextVersion(gameId);
@@ -151,13 +153,13 @@ export async function deploy(
     })();
 
     const now = new Date().toISOString();
-    const commitHash = hasChanges
-      ? exec(`git --git-dir="${repoPath}" --work-tree="${workTree}" commit -m "${gitTag} by ${userId} at ${now}"`)
-          .split("\n")[0]
-      : exec(`git --git-dir="${repoPath}" log -1 --format="%H"`);
+    if (hasChanges) {
+      exec(`git --git-dir="${repoPath}" --work-tree="${workTree}" commit -m "${gitTag} by ${userId} at ${now}"`);
+    }
+    const commitHash = exec(`git --git-dir="${repoPath}" log -1 --format="%H"`);
 
     exec(`git --git-dir="${repoPath}" tag -f "${gitTag}"`);
-    send(sse, `Git commit：${commitHash.slice(0, 12)}`);
+    send(sse, `Git commit：${commitHash.slice(0, 12)} (${gitTag})`);
 
     const fileSizeKb = Math.ceil(
       parseInt(exec(`du -sk "${stagingDir}" | cut -f1`), 10)
@@ -237,14 +239,10 @@ export async function rollback(
     exec(`git --git-dir="${game.repo_path}" --work-tree="${workTree}" add -A`);
 
     const now = new Date().toISOString();
-    let commitHash: string;
     try {
-      commitHash = exec(
-        `git --git-dir="${game.repo_path}" --work-tree="${workTree}" commit -m "${gitTag} rollback to v${targetVersionNum} by ${operatorId} at ${now}"`
-      ).split("\n")[0];
-    } catch {
-      commitHash = exec(`git --git-dir="${game.repo_path}" log -1 --format="%H"`);
-    }
+      exec(`git --git-dir="${game.repo_path}" --work-tree="${workTree}" commit -m "${gitTag} rollback to v${targetVersionNum} by ${operatorId} at ${now}"`);
+    } catch (_) { }
+    const commitHash = exec(`git --git-dir="${game.repo_path}" log -1 --format="%H"`);
 
     exec(`git --git-dir="${game.repo_path}" tag -f "${gitTag}"`);
 

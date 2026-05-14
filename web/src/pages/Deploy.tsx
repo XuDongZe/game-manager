@@ -1,18 +1,43 @@
-import { useState, useRef, DragEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect, DragEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
 import LogViewer from '../components/LogViewer';
+import { LogMessage } from '../types';
 
 export default function Deploy() {
-  const [userId, setUserId] = useState('');
-  const [gameName, setGameName] = useState('');
+  const navigate = useNavigate();
+
+  const [uploader, setUploader] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [gameSlug, setGameSlug] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  
+  const [isPacking, setIsPacking] = useState(false);
+
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployComplete, setDeployComplete] = useState(false);
   const [deployError, setDeployError] = useState('');
+  const [deployedGameId, setDeployedGameId] = useState('');
+  const [zipFile, setZipFile] = useState<File | null>(null);
+
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 0) {
+      navigate(`/game/${encodeURIComponent(deployedGameId)}`);
+      return;
+    }
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [countdown, deployedGameId, navigate]);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -24,43 +49,85 @@ export default function Deploy() {
     setIsDragging(false);
   };
 
+  async function wrapHtmlInZip(htmlFile: File): Promise<File> {
+    const zip = new JSZip();
+    zip.file('index.html', htmlFile);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    return new File([blob], `${htmlFile.name.replace(/\.html?$/i, '')}.zip`, { type: 'application/zip' });
+  }
+
+  async function acceptFile(picked: File) {
+    if (picked.name.toLowerCase().endsWith('.zip')) {
+      setFile(picked);
+      setZipFile(picked);
+    } else if (picked.name.toLowerCase().match(/\.html?$/)) {
+      setFile(picked);
+      setZipFile(null);
+      setIsPacking(true);
+      try {
+        const zipped = await wrapHtmlInZip(picked);
+        setZipFile(zipped);
+      } finally {
+        setIsPacking(false);
+      }
+    } else {
+      alert('只支持 .zip 或 .html 文件');
+    }
+  }
+
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.name.endsWith('.zip')) {
-        setFile(droppedFile);
-      } else {
-        alert('只能上传 ZIP 文件');
-      }
+      acceptFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+      acceptFile(e.target.files[0]);
     }
   };
 
+  const slugValid = /[a-z0-9]/i.test(gameSlug.trim());
+  const canSubmit = uploader.trim() && slugValid && file && zipFile && !isPacking;
+
   const startDeploy = () => {
-    if (!userId || !gameName || !file) {
-      alert('请填写完整信息并上传文件');
-      return;
-    }
-    
+    if (!canSubmit) return;
     setIsDeploying(true);
     setDeployComplete(false);
     setDeployError('');
+    setDeployedGameId('');
   };
 
   const formData = new FormData();
   if (isDeploying) {
-    formData.append('userId', userId);
-    formData.append('gameName', gameName);
-    if (file) formData.append('file', file);
+    formData.append('userId', uploader.trim());
+    formData.append('gameName', gameSlug.trim());
+    formData.append('displayName', displayName.trim() || gameSlug.trim());
+    if (zipFile) formData.append('file', zipFile);
   }
+
+  const handleDeployDone = (msg: LogMessage) => {
+    if (msg.ok && msg.gameId) {
+      setDeployedGameId(msg.gameId);
+      setDeployComplete(true);
+      setCountdown(5);
+    }
+  };
+
+  const resetForm = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setIsDeploying(false);
+    setFile(null);
+    setZipFile(null);
+    setGameSlug('');
+    setDisplayName('');
+    setDeployComplete(false);
+    setDeployError('');
+    setDeployedGameId('');
+    setCountdown(null);
+  };
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -69,79 +136,110 @@ export default function Deploy() {
       {!isDeploying ? (
         <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>开发者 ID (userId)</label>
-            <input 
-              type="text" 
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="例如: admin"
-              style={{ width: '100%', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>你的名字</label>
+            <input
+              type="text"
+              value={uploader}
+              onChange={(e) => setUploader(e.target.value)}
+              placeholder="例如: 小明"
+              style={{ width: '100%', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>游戏名称</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="例如: 单词对对碰（展示用，可中文，选填）"
+              style={{ width: '100%', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px', boxSizing: 'border-box' }}
             />
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>游戏标识 (gameName)</label>
-            <input 
-              type="text" 
-              value={gameName}
-              onChange={(e) => setGameName(e.target.value)}
-              placeholder="例如: tetris (只允许英文和数字)"
-              style={{ width: '100%', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+              游戏标识 <span style={{ fontWeight: 'normal', color: '#6b7280', fontSize: '13px' }}>（用于生成访问链接，只能用英文字母和数字）</span>
+            </label>
+            <input
+              type="text"
+              value={gameSlug}
+              onChange={(e) => setGameSlug(e.target.value)}
+              placeholder="例如: word-match"
+              style={{ width: '100%', padding: '10px', border: `1px solid ${gameSlug && !slugValid ? '#ef4444' : 'var(--border-color)'}`, borderRadius: '4px', boxSizing: 'border-box' }}
             />
+            {gameSlug && !slugValid && (
+              <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '4px' }}>
+                游戏标识必须包含至少一个英文字母或数字
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>游戏产物 (.zip 压缩包)</label>
-            <div 
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>游戏文件</label>
+            <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !isPacking && fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${isDragging ? 'var(--primary-color)' : 'var(--border-color)'}`,
                 borderRadius: '8px',
                 padding: '48px 24px',
                 textAlign: 'center',
                 backgroundColor: isDragging ? '#eff6ff' : '#f9fafb',
-                cursor: 'pointer',
+                cursor: isPacking ? 'wait' : 'pointer',
                 transition: 'all 0.2s'
               }}
             >
-              <input 
-                type="file" 
-                accept=".zip" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                style={{ display: 'none' }} 
+              <input
+                type="file"
+                accept=".zip,.html,.htm"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
               />
-              {file ? (
+              {isPacking ? (
                 <div>
-                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>📦</div>
+                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>⏳</div>
+                  <div style={{ fontWeight: 'bold', color: '#4b5563' }}>正在打包 HTML 文件...</div>
+                </div>
+              ) : file ? (
+                <div>
+                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>
+                    {file.name.toLowerCase().match(/\.html?$/) ? '📄' : '📦'}
+                  </div>
                   <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{file.name}</div>
-                  <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>{(file.size / 1024).toFixed(2)} KB</div>
+                  <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
+                    {(file.size / 1024).toFixed(2)} KB
+                    {file.name.toLowerCase().match(/\.html?$/) && (
+                      <span style={{ marginLeft: '8px', color: '#10b981' }}>（已自动打包为 ZIP）</span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div>
                   <div style={{ fontSize: '48px', marginBottom: '8px', color: '#9ca3af' }}>☁️</div>
-                  <div style={{ fontWeight: 'bold', color: '#4b5563' }}>点击或拖拽 ZIP 文件到此处</div>
-                  <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '4px' }}>必须包含 index.html 等静态资源</div>
+                  <div style={{ fontWeight: 'bold', color: '#4b5563' }}>点击或拖拽文件到此处</div>
+                  <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '4px' }}>支持 .zip 压缩包 或 .html 单文件</div>
                 </div>
               )}
             </div>
           </div>
 
-          <button 
+          <button
             onClick={startDeploy}
-            disabled={!userId || !gameName || !file}
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: (!userId || !gameName || !file) ? '#ccc' : 'var(--primary-color)', 
-              color: '#fff', 
+            disabled={!canSubmit}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: canSubmit ? 'var(--primary-color)' : '#ccc',
+              color: '#fff',
               borderRadius: '4px',
               fontSize: '16px',
               fontWeight: 'bold',
-              cursor: (!userId || !gameName || !file) ? 'not-allowed' : 'pointer'
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
+              border: 'none'
             }}
           >
             开始部署
@@ -150,40 +248,42 @@ export default function Deploy() {
       ) : (
         <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
           <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>部署日志</h2>
-          <LogViewer 
-            url="/api/deploy" 
-            method="POST" 
-            body={formData} 
-            onComplete={() => setDeployComplete(true)}
+          <LogViewer
+            url="/api/deploy"
+            method="POST"
+            body={formData}
+            onComplete={handleDeployDone}
             onError={(err) => setDeployError(err)}
           />
 
           {deployComplete && (
             <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', textAlign: 'center' }}>
               <h3 style={{ color: '#047857', marginBottom: '8px' }}>🎉 部署成功！</h3>
-              <p style={{ marginBottom: '16px', color: '#065f46' }}>游戏已经成功发布并可以在线访问了。</p>
+              <p style={{ marginBottom: '4px', color: '#065f46' }}>游戏已经成功发布并可以在线访问了。</p>
+              <p style={{ marginBottom: '16px', color: '#6b7280', fontSize: '14px' }}>
+                {countdown !== null && countdown > 0
+                  ? `${countdown} 秒后自动跳转到详情页...`
+                  : '正在跳转...'}
+              </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-                <a 
-                  href={`/games/${userId}/${gameName}/`} 
-                  target="_blank" 
+                <a
+                  href={`/games/${deployedGameId}/`}
+                  target="_blank"
                   rel="noreferrer"
                   style={{ padding: '8px 16px', background: 'var(--success-color)', color: '#fff', borderRadius: '4px', textDecoration: 'none' }}
                 >
                   去玩游戏
                 </a>
-                <Link 
-                  to={`/game/${encodeURIComponent(`${userId}/${gameName}`)}`}
+                <Link
+                  to={`/game/${encodeURIComponent(deployedGameId)}`}
+                  onClick={() => { if (countdownRef.current) clearInterval(countdownRef.current); }}
                   style={{ padding: '8px 16px', background: '#fff', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '4px', textDecoration: 'none' }}
                 >
-                  查看详情
+                  立即查看详情
                 </Link>
-                <button 
-                  onClick={() => {
-                    setIsDeploying(false);
-                    setFile(null);
-                    setGameName('');
-                  }}
-                  style={{ padding: '8px 16px', background: '#f3f4f6', color: '#4b5563', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                <button
+                  onClick={resetForm}
+                  style={{ padding: '8px 16px', background: '#f3f4f6', color: '#4b5563', borderRadius: '4px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
                 >
                   继续部署
                 </button>
@@ -195,9 +295,9 @@ export default function Deploy() {
             <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#fef2f2', border: '1px solid #ef4444', borderRadius: '8px', textAlign: 'center' }}>
               <h3 style={{ color: '#b91c1c', marginBottom: '8px' }}>❌ 部署失败</h3>
               <p style={{ color: '#7f1d1d', marginBottom: '16px' }}>{deployError}</p>
-              <button 
+              <button
                 onClick={() => setIsDeploying(false)}
-                style={{ padding: '8px 16px', background: '#fff', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                style={{ padding: '8px 16px', background: '#fff', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
               >
                 返回修改
               </button>

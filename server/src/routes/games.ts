@@ -38,6 +38,16 @@ router.get("/", (_req: Request, res: Response) => {
   );
 });
 
+router.get(/^\/(.+)\/versions$/, (req: Request, res: Response) => {
+  const gameId = (req.params as unknown as Record<string, string>)["0"];
+  const versions = db
+    .prepare(
+      "SELECT * FROM versions WHERE game_id = ? ORDER BY version_num DESC"
+    )
+    .all(gameId) as Version[];
+  res.json(versions);
+});
+
 router.get("/:gameId(*)", (req: Request, res: Response) => {
   const { gameId } = req.params;
   const game = db.prepare("SELECT * FROM games WHERE id = ?").get(gameId) as Game | undefined;
@@ -73,16 +83,6 @@ router.patch("/:gameId(*)", (req: Request, res: Response) => {
   }
 
   res.json({ ok: true });
-});
-
-router.get("/:gameId(*)/versions", (req: Request, res: Response) => {
-  const { gameId } = req.params;
-  const versions = db
-    .prepare(
-      "SELECT * FROM versions WHERE game_id = ? ORDER BY version_num DESC"
-    )
-    .all(gameId) as Version[];
-  res.json(versions);
 });
 
 export default router;
