@@ -119,6 +119,7 @@ export default function Deploy() {
   const resetForm = () => {
     if (countdownRef.current) clearInterval(countdownRef.current);
     setIsDeploying(false);
+    setUploader('');
     setFile(null);
     setZipFile(null);
     setGameSlug('');
@@ -159,7 +160,7 @@ export default function Deploy() {
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              游戏标识 <span style={{ fontWeight: 'normal', color: '#6b7280', fontSize: '13px' }}>（用于生成访问链接，只能用英文字母和数字）</span>
+              游戏标识 <span style={{ fontWeight: 'normal', color: '#6b7280', fontSize: '13px' }}>（用于生成访问链接，只能用英文字母、数字和连字符）</span>
             </label>
             <input
               type="text"
