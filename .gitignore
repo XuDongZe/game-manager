@@ -32,3 +32,9 @@ Thumbs.db
 # Logs (local)
 *.log
 logs/
+
+# Playwright / browser automation temp files
+.playwright-mcp/
+*.png
+*.jpeg
+*.jpg
