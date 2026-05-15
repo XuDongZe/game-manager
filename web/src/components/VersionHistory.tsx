@@ -27,6 +27,16 @@ export default function VersionHistory({ gameId, versions, onRefresh }: VersionH
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'live': return '运行中';
+      case 'failed': return '失败';
+      case 'rolled_back': return '已回滚';
+      case 'deploying': return '部署中';
+      default: return status;
+    }
+  };
+
   return (
     <div style={{ marginTop: '24px' }}>
       <h3 style={{ marginBottom: '16px' }}>版本历史</h3>
@@ -75,16 +85,16 @@ export default function VersionHistory({ gameId, versions, onRefresh }: VersionH
           <tbody>
             {versions.map((v) => (
               <tr key={v.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <td style={{ padding: '12px 16px' }}>v{v.version_num} {v.is_rollback && '(回滚)'}</td>
+                <td style={{ padding: '12px 16px' }}>v{v.version_num} {!!v.is_rollback && '(回滚)'}</td>
                 <td style={{ padding: '12px 16px' }}>{v.git_tag || '-'}</td>
                 <td style={{ padding: '12px 16px', color: getStatusColor(v.status), fontWeight: 'bold' }}>
-                  {v.status}
+                  {getStatusLabel(v.status)}
                 </td>
                 <td style={{ padding: '12px 16px' }}>{v.deployed_by}</td>
                 <td style={{ padding: '12px 16px' }}>{new Date(v.deployed_at).toLocaleString()}</td>
                 <td style={{ padding: '12px 16px' }}>{v.file_size_kb || '-'}</td>
                 <td style={{ padding: '12px 16px' }}>
-                  {v.status !== 'live' && v.status !== 'failed' && v.status !== 'deploying' && (
+                  {v.status !== 'live' && v.status !== 'deploying' && (
                     <button 
                       onClick={() => handleRollback(v.version_num)}
                       style={{ padding: '6px 12px', background: 'var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '14px' }}

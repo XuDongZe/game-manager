@@ -29,9 +29,9 @@ export default function GameDetail() {
   const [folderDeployDone, setFolderDeployDone] = useState(false);
   const [folderDeployError, setFolderDeployError] = useState('');
   const [folderFormData, setFolderFormData] = useState<FormData | null>(null);
-  const [deployedGameId, setDeployedGameId] = useState('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resetFolderDeployRef = useRef<() => void>(() => {});
 
   const fetchGameData = useCallback(() => {
     if (!gameId) return;
@@ -65,14 +65,15 @@ export default function GameDetail() {
   useEffect(() => {
     if (countdown === null) return;
     if (countdown <= 0) {
-      navigate(`/game/${encodeURIComponent(deployedGameId)}`);
+      fetchGameData();
+      resetFolderDeployRef.current();
       return;
     }
     countdownRef.current = setInterval(() => {
       setCountdown(prev => (prev !== null ? prev - 1 : null));
     }, 1000);
     return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
-  }, [countdown, deployedGameId, navigate]);
+  }, [countdown, fetchGameData]);
 
   const handleBindFolder = useCallback(async () => {
     if (!gameId) return;
@@ -135,8 +136,7 @@ export default function GameDetail() {
   }, [gameId, game]);
 
   const handleFolderDeployDone = useCallback((msg: LogMessage) => {
-    if (msg.ok && msg.gameId) {
-      setDeployedGameId(msg.gameId);
+    if (msg.ok) {
       setFolderDeployDone(true);
       setCountdown(5);
     }
@@ -148,9 +148,10 @@ export default function GameDetail() {
     setFolderDeployDone(false);
     setFolderDeployError('');
     setFolderFormData(null);
-    setDeployedGameId('');
     setCountdown(null);
   }, []);
+
+  resetFolderDeployRef.current = resetFolderDeploy;
 
   const handleToggleLock = useCallback(async () => {
     if (!game || !gameId) return;
