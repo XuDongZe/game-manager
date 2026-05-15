@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>单词对对碰</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: #222;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            border-radius: 0;
+            touch-action: none;
+        }
+
+        /* 菜单层 */
+        #menuOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            border-radius: inherit;
+            transition: opacity 0.3s;
+        }
+
+        .menu-title {
+            font-size: 38px;
+            font-weight: bold;
+            color: #27ae60;
+            margin-bottom: 25px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .setting-group {
+            width: 80%;
+            margin-bottom: 12px;
+            background: #f1f2f6;
+            padding: 12px 15px;
+            border-radius: 12px;
+            box-sizing: border-box;
+        }
+
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            color: #2f3542;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .setting-label.checkbox-row {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        .setting-group.highlight {
+            background: #dfe4ea;
+            border: 2px solid #27ae60;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 8px;
+            background: #bdc3c7;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #27ae60;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            border: 2px solid #fff;
+        }
+
+        input[type=checkbox] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #27ae60;
+        }
+
+        .start-btn {
+            margin-top: 15px;
+            width: 200px;
+            height: 55px;
+            background: #27ae60;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            border: none;
+            border-radius: 27.5px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+            transition: transform 0.1s;
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            display: none !important;
+            pointer-events: none;
+        }
+
+        /* 语言切换 */
+        .lang-switcher {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        .lang-btn {
+            width: 50px;
+            height: 36px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            border-color: #27ae60;
+            background: #27ae60;
+            color: #fff;
+        }
+
+        /* 局内设置按钮 */
+        #ingameSettingsBtn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 局内设置面板 */
+        #ingameSettingsPanel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 260px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            z-index: 11;
+            display: none;
+        }
+
+        .ingame-lang-switcher {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .ingame-lang-btn {
+            flex: 1;
+            height: 32px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ingame-lang-btn.active {
+            border-color: #27ae60;
+            background: #27ae60;
+            color: #fff;
+        }
+
+        /* 话筒区域 */
+        #micArea {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        #micText {
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 12px;
+            max-width: 140px;
+            text-align: center;
+            word-break: break-all;
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+        }
+
+        #micText.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #micText.success {
+            background: rgba(39, 174, 96, 0.9);
+        }
+
+        #micText.fail {
+            background: rgba(214, 48, 49, 0.8);
+        }
+
+        /* 话筒按钮 */
+        #micBtn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #27ae60;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+            transition: background 0.3s;
+        }
+
+        #micBtn.active {
+            animation: micPulse 2s infinite;
+        }
+
+        #micBtn.off {
+            background: #b2bec3;
+            animation: none;
+        }
+
+        #micBtn.shake {
+            animation: micShake 0.4s ease;
+        }
+
+        @keyframes micPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); }
+            50% { transform: scale(1.08); box-shadow: 0 4px 25px rgba(39, 174, 96, 0.6); }
+        }
+
+        @keyframes micShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px) rotate(-5deg); }
+            40% { transform: translateX(6px) rotate(5deg); }
+            60% { transform: translateX(-4px) rotate(-3deg); }
+            80% { transform: translateX(4px) rotate(3deg); }
+        }
+
+        /* 教学提示层 */
+        #tutorialOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 15;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tutorial-content {
+            text-align: center;
+            color: #fff;
+            padding: 0 30px;
+        }
+
+        .tutorial-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 24px;
+        }
+
+        .tutorial-rules {
+            text-align: left;
+            display: inline-block;
+        }
+
+        .tutorial-rule {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 17px;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .rule-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+            width: 36px;
+            text-align: center;
+        }
+
+        .tutorial-tap {
+            font-size: 14px;
+            opacity: 0.6;
+            margin-top: 24px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ingameSettingsBtn" onclick="toggleIngameSettings()">⚙️</div>
+
+        <div id="ingameSettingsPanel">
+            <div class="setting-label">
+                <span>堆叠偏移感</span>
+                <span id="valStackOffset">0.0</span>
+            </div>
+            <input type="range" id="inputStackOffset" min="0" max="1" step="0.05" value="0.0">
+
+            <label class="setting-label checkbox-row"
+                style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #ddd;">
+                <span>高亮可移动牌</span>
+                <input type="checkbox" id="inputHighlight">
+            </label>
+
+            <div class="setting-label" style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #ddd;">
+                <span>语言切换</span>
+            </div>
+            <div class="ingame-lang-switcher" id="ingameLangSwitcher">
+                <button class="ingame-lang-btn active" data-index="0">EN</button>
+                <button class="ingame-lang-btn" data-index="1">中</button>
+                <button class="ingame-lang-btn" data-index="2">日</button>
+                <button class="ingame-lang-btn" data-index="3">РУ</button>
+            </div>
+        </div>
+
+        <!-- 话筒按钮 + 识别可视化 -->
+        <div id="micArea">
+            <div id="micText"></div>
+            <button id="micBtn" class="active" onclick="toggleMic()">🎤</button>
+        </div>
+
+        <!-- 教学提示层 -->
+        <div id="tutorialOverlay" class="hidden">
+            <div class="tutorial-content">
+                <div class="tutorial-title">单词对对碰</div>
+                <div class="tutorial-rules">
+                    <div class="tutorial-rule">
+                        <span class="rule-icon">👆</span>
+                        <span>点击未被遮挡的单词牌，送入托盘</span>
+                    </div>
+                    <div class="tutorial-rule">
+                        <span class="rule-icon">✨</span>
+                        <span>托盘凑齐2张相同单词即消除</span>
+                    </div>
+                    <div class="tutorial-rule">
+                        <span class="rule-icon">🎤</span>
+                        <span>开启话筒后，喊出单词也能收牌！</span>
+                    </div>
+                    <div class="tutorial-rule">
+                        <span class="rule-icon">🏆</span>
+                        <span>清空所有牌面即为胜利</span>
+                    </div>
+                </div>
+                <div class="tutorial-tap">点击任意处开始</div>
+            </div>
+        </div>
+
+        <div id="menuOverlay">
+            <div class="menu-title">单词对对碰</div>
+
+            <!-- 语言切换 -->
+            <div class="setting-group highlight">
+                <div class="setting-label">
+                    <span>语言 Language</span>
+                </div>
+                <div class="lang-switcher" id="langSwitcher">
+                    <button class="lang-btn active" data-index="0">EN</button>
+                    <button class="lang-btn" data-index="1">中</button>
+                    <button class="lang-btn" data-index="2">日</button>
+                    <button class="lang-btn" data-index="3">РУ</button>
+                </div>
+            </div>
+
+            <div class="setting-group highlight">
+                <div class="setting-label">
+                    <span>槽位数</span>
+                    <span id="valCapacity">4</span>
+                </div>
+                <input type="range" id="inputCapacity" min="4" max="8" value="4" step="1">
+            </div>
+
+            <div class="setting-group highlight">
+                <div class="setting-label">
+                    <span>堆叠层数</span>
+                    <span id="valLayers">5</span>
+                </div>
+                <input type="range" id="inputLayers" min="1" max="7" value="5" step="1">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>每种单词最少对数</span>
+                    <span id="valMin">1</span>
+                </div>
+                <input type="range" id="inputMin" min="1" max="10" value="1" step="1">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>每种单词最多对数</span>
+                    <span id="valMax">2</span>
+                </div>
+                <input type="range" id="inputMax" min="1" max="10" value="2" step="1">
+            </div>
+
+            <button class="start-btn" onclick="startGameClick()">开始挑战</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 单词词库 - 36个正向短词，含4语翻译
+         */
+        const WORDS = [
+            { en: "love", zh: "爱", ja: "愛", ru: "любовь" },
+            { en: "happy", zh: "快乐", ja: "幸せ", ru: "счастье" },
+            { en: "star", zh: "星星", ja: "星", ru: "звезда" },
+            { en: "sun", zh: "太阳", ja: "太陽", ru: "солнце" },
+            { en: "moon", zh: "月亮", ja: "月", ru: "луна" },
+            { en: "cool", zh: "酷", ja: "クール", ru: "круто" },
+            { en: "nice", zh: "好的", ja: "素敵", ru: "класс" },
+            { en: "hope", zh: "希望", ja: "希望", ru: "надежда" },
+            { en: "dream", zh: "梦想", ja: "夢", ru: "мечта" },
+            { en: "play", zh: "玩", ja: "遊ぶ", ru: "играть" },
+            { en: "joy", zh: "喜悦", ja: "喜び", ru: "радость" },
+            { en: "luck", zh: "幸运", ja: "幸運", ru: "удача" },
+            { en: "kind", zh: "善良", ja: "優しい", ru: "добрый" },
+            { en: "calm", zh: "平静", ja: "穏やか", ru: "покой" },
+            { en: "free", zh: "自由", ja: "自由", ru: "свобода" },
+            { en: "pure", zh: "纯净", ja: "純粋", ru: "чистый" },
+            { en: "win", zh: "胜利", ja: "勝つ", ru: "победа" },
+            { en: "fun", zh: "有趣", ja: "楽しい", ru: "весело" },
+            { en: "best", zh: "最好", ja: "最高", ru: "лучший" },
+            { en: "yes", zh: "是的", ja: "はい", ru: "да" },
+            { en: "go", zh: "出发", ja: "行く", ru: "вперёд" },
+            { en: "wow", zh: "哇", ja: "わあ", ru: "вау" },
+            { en: "top", zh: "顶", ja: "トップ", ru: "топ" },
+            { en: "gem", zh: "宝石", ja: "宝石", ru: "алмаз" },
+            { en: "gift", zh: "礼物", ja: "贈り物", ru: "подарок" },
+            { en: "glow", zh: "光芒", ja: "輝き", ru: "сияние" },
+            { en: "peace", zh: "和平", ja: "平和", ru: "мир" },
+            { en: "smile", zh: "微笑", ja: "笑顔", ru: "улыбка" },
+            { en: "sweet", zh: "甜蜜", ja: "甘い", ru: "сладкий" },
+            { en: "brave", zh: "勇敢", ja: "勇敢", ru: "смелый" },
+            { en: "light", zh: "光", ja: "光", ru: "свет" },
+            { en: "magic", zh: "魔法", ja: "魔法", ru: "магия" },
+            { en: "shine", zh: "闪耀", ja: "輝く", ru: "блеск" },
+            { en: "bloom", zh: "绽放", ja: "咲く", ru: "цветок" },
+            { en: "hello", zh: "你好", ja: "こんにちは", ru: "привет" },
+            { en: "heart", zh: "心", ja: "ハート", ru: "сердце" }
+        ];
+
+        /**
+         * 语言配置
+         */
+        const LANG_OPTIONS = [
+            { code: 'en', label: 'EN', speechLang: 'en-US' },
+            { code: 'zh', label: '中', speechLang: 'zh-CN' },
+            { code: 'ja', label: '日', speechLang: 'ja-JP' },
+            { code: 'ru', label: 'РУ', speechLang: 'ru-RU' }
+        ];
+
+        let currentLangIndex = 0;
+
+        function getCurrentLang() {
+            return LANG_OPTIONS[currentLangIndex];
+        }
+
+        // 获取牌面显示文字
+        function getWordDisplay(wordIndex) {
+            const word = WORDS[wordIndex % WORDS.length];
+            const lang = getCurrentLang().code;
+            const main = word[lang];
+            const sub = lang === 'en' ? word.zh : word.en;
+            return { main, sub };
+        }
+
+        /**
+         * 核心配置
+         */
+        const CONFIG = {
+            DESIGN_WIDTH: 720,
+            DESIGN_HEIGHT: 1280,
+            ASPECT_RATIO: 9 / 16,
+            COLORS: {
+                bgGradientStart: '#667eea',
+                bgGradientEnd: '#764ba2',
+                cardTop: '#f6f4f0',
+                cardSide: '#5ecc71',
+                cardBorder: '#505050',
+                trayBg: 'rgba(255, 255, 255, 0.9)',
+                trayBorder: '#333333',
+                text: '#57606f',
+                primary: '#27ae60',
+                undoBtn: '#48dbfb',
+                disabledBtn: '#b2bec3',
+                reviveBtn: '#fab1a0',
+                toastBg: 'rgba(0,0,0,0.8)'
+            },
+            WORD_TYPES: 36,
+            TRAY_CAPACITY: 4,
+            CARD_SIZE: 110,
+            CARD_DEPTH: 8,
+            CARD_RADIUS: 10,
+            ROW_SPACING_FACTOR: 1.0
+        };
+
+        let gameInstance = null;
+        let minPairs = 1;
+        let maxPairs = 2;
+        let configLayers = 5;
+        let stackOffsetFactor = 0.0;
+        let configHighlightOnlyClickable = false;
+
+        /* UI Logic */
+        const inputMin = document.getElementById('inputMin');
+        const inputMax = document.getElementById('inputMax');
+        const inputLayers = document.getElementById('inputLayers');
+        const inputCapacity = document.getElementById('inputCapacity');
+        const inputHighlight = document.getElementById('inputHighlight');
+
+        const valMin = document.getElementById('valMin');
+        const valMax = document.getElementById('valMax');
+        const valLayers = document.getElementById('valLayers');
+        const valCapacity = document.getElementById('valCapacity');
+        const menuOverlay = document.getElementById('menuOverlay');
+
+        const ingamePanel = document.getElementById('ingameSettingsPanel');
+        const inputStackOffset = document.getElementById('inputStackOffset');
+        const valStackOffset = document.getElementById('valStackOffset');
+
+        inputMin.addEventListener('input', (e) => {
+            let v = parseInt(e.target.value);
+            if (v > parseInt(inputMax.value)) { inputMax.value = v; valMax.innerText = v; maxPairs = v; }
+            valMin.innerText = v; minPairs = v;
+        });
+        inputMax.addEventListener('input', (e) => {
+            let v = parseInt(e.target.value);
+            if (v < parseInt(inputMin.value)) { inputMin.value = v; valMin.innerText = v; minPairs = v; }
+            valMax.innerText = v; maxPairs = v;
+        });
+        inputLayers.addEventListener('input', (e) => {
+            configLayers = parseInt(e.target.value);
+            valLayers.innerText = configLayers;
+        });
+        inputCapacity.addEventListener('input', (e) => {
+            let v = parseInt(e.target.value);
+            CONFIG.TRAY_CAPACITY = v;
+            valCapacity.innerText = v;
+        });
+
+        inputHighlight.addEventListener('change', (e) => {
+            configHighlightOnlyClickable = e.target.checked;
+        });
+
+        inputStackOffset.addEventListener('input', (e) => {
+            let v = parseFloat(e.target.value);
+            stackOffsetFactor = v;
+            valStackOffset.innerText = v.toFixed(2);
+            if (gameInstance) gameInstance.updateStackingOffsets();
+        });
+
+        // 语言切换 - 菜单
+        document.getElementById('langSwitcher').addEventListener('click', (e) => {
+            if (e.target.classList.contains('lang-btn')) {
+                currentLangIndex = parseInt(e.target.dataset.index);
+                document.querySelectorAll('#langSwitcher .lang-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                // 同步局内切换按钮
+                syncIngameLangButtons();
+            }
+        });
+
+        // 语言切换 - 局内
+        document.getElementById('ingameLangSwitcher').addEventListener('click', (e) => {
+            if (e.target.classList.contains('ingame-lang-btn')) {
+                currentLangIndex = parseInt(e.target.dataset.index);
+                document.querySelectorAll('#ingameLangSwitcher .ingame-lang-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                // 同步菜单按钮
+                document.querySelectorAll('#langSwitcher .lang-btn').forEach(btn => {
+                    btn.classList.toggle('active', parseInt(btn.dataset.index) === currentLangIndex);
+                });
+                // 切换语音识别语言
+                if (voiceEngine) voiceEngine.restart();
+            }
+        });
+
+        function syncIngameLangButtons() {
+            document.querySelectorAll('#ingameLangSwitcher .ingame-lang-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.index) === currentLangIndex);
+            });
+        }
+
+        function toggleIngameSettings() {
+            if (ingamePanel.style.display === 'block') {
+                ingamePanel.style.display = 'none';
+            } else {
+                ingamePanel.style.display = 'block';
+            }
+        }
+
+        function startGameClick() {
+            menuOverlay.classList.add('hidden');
+            ingamePanel.style.display = 'none';
+
+            // 显示教学提示
+            const tutorial = document.getElementById('tutorialOverlay');
+            tutorial.classList.remove('hidden');
+
+            tutorial.addEventListener('click', function handler() {
+                tutorial.classList.add('hidden');
+                tutorial.removeEventListener('click', handler);
+                if (gameInstance) gameInstance.startGame();
+                // 开始游戏时启动语音引擎
+                if (voiceEngine && micEnabled) voiceEngine.start();
+            }, { once: true });
+        }
+
+        function showMenu() {
+            menuOverlay.classList.remove('hidden');
+            ingamePanel.style.display = 'none';
+            // 回到菜单时停止语音
+            if (voiceEngine) voiceEngine.stop();
+        }
+
+        /* Polyfill */
+        CanvasRenderingContext2D.prototype.roundRect = CanvasRenderingContext2D.prototype.roundRect || function (x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            this.beginPath();
+            this.moveTo(x + r, y);
+            this.arcTo(x + w, y, x + w, y + h, r);
+            this.arcTo(x + w, y + h, x, y + h, r);
+            this.arcTo(x, y + h, x, y, r);
+            this.arcTo(x, y, x + w, y, r);
+            this.closePath();
+            return this;
+        };
+
+        /**
+         * 文字牌面渲染器（替代 FruitDrawer）- 带立体卡片效果
+         */
+        const WordDrawer = {
+            draw: function(ctx, typeIndex, size, skipDepth) {
+                const { main, sub } = getWordDisplay(typeIndex);
+                const w = size;
+                const h = size * 1.15;
+                const depth = CONFIG.CARD_DEPTH;
+                const r = 12;
+                const cardX = -w/2 + 6;
+                const cardY = -h/2 + 6;
+                const cardW = w - 12;
+                const cardH = h - 12;
+
+                if (!skipDepth) {
+                    // 侧面（底部厚度）
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.beginPath();
+                    ctx.roundRect(cardX, cardY + depth, cardW, cardH, r);
+                    ctx.fill();
+
+                    // 侧面边框
+                    ctx.strokeStyle = '#388E3C';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+
+                // 正面白底
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                ctx.shadowBlur = 6;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2;
+                ctx.beginPath();
+                ctx.roundRect(cardX, cardY, cardW, cardH, r);
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+
+                // 正面边框
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 主文字
+                const mainFontSize = this.calcFontSize(main, cardW - 12);
+                ctx.fillStyle = '#2d3436';
+                ctx.font = `bold ${mainFontSize}px Arial, "Hiragino Sans", "Microsoft YaHei", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(main, 0, -2);
+
+                // 副文字
+                const subFontSize = Math.min(14, mainFontSize * 0.5);
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = `${subFontSize}px Arial, "Hiragino Sans", "Microsoft YaHei", sans-serif`;
+                ctx.fillText(sub, 0, cardH/2 - 6);
+            },
+
+            calcFontSize: function(text, maxWidth) {
+                if (!text) return 20;
+                const len = text.length;
+                if (len <= 2) return 30;
+                if (len <= 4) return 26;
+                if (len <= 6) return 20;
+                if (len <= 8) return 16;
+                return 13;
+            }
+        };
+
+        /**
+         * 粒子类
+         */
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 16;
+                this.vy = (Math.random() - 0.5) * 16 - 4; // 偏向上飞
+                this.life = 1.0;
+                this.type = type;
+                this.scale = 0.5 + Math.random() * 0.5; // 随机大小 0.5~1.0
+                this.rot = Math.random() * Math.PI;
+                this.vRot = (Math.random() - 0.5) * 0.3;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.5; // 减轻重力，飘得更久
+                this.life -= 0.025; // 存活更久
+                this.scale *= 0.97;
+                this.rot += this.vRot;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+                ctx.scale(this.scale, this.scale);
+                ctx.globalAlpha = this.life;
+
+                // 粒子：卡片碎片 + 文字（更大）
+                const s = 55;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(39,174,96,0.5)';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.roundRect(-s/2, -s/2, s, s, 6);
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+
+                const { main } = getWordDisplay(this.type);
+                ctx.fillStyle = '#27ae60';
+                ctx.font = 'bold 16px Arial, "Hiragino Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(main, 0, 0);
+
+                ctx.restore();
+            }
+        }
+
+        /**
+         * 牌类
+         */
+        class Tile {
+            constructor(id, type, x, y, layerIndex, gridR, gridC) {
+                this.id = id;
+                this.type = type;
+                this.layerIndex = layerIndex;
+
+                this.gridR = gridR;
+                this.gridC = gridC;
+
+                this.w = CONFIG.CARD_SIZE;
+                this.h = CONFIG.CARD_SIZE * 1.15;
+
+                this.isClickable = false;
+                this.inTray = false;
+                this.isRemoved = false;
+                this.isMatching = false;
+
+                this.baseBoardX = x;
+                this.baseBoardY = y;
+
+                this.boardX = x;
+                this.boardY = y;
+
+                this.x = x;
+                this.y = y + 50;
+                this.targetX = x;
+                this.targetY = y;
+                this.scale = 0;
+                this.targetScale = 1;
+                this.isMoving = false;
+
+                this.shakeTimer = 0;
+                this.shakeOffsetX = 0;
+
+                this.animOffsetX = 0;
+            }
+
+            updateStackPosition(factor) {
+                if (this.inTray) return;
+                const shift = this.layerIndex * factor * CONFIG.CARD_DEPTH;
+                this.boardX = this.baseBoardX - shift;
+                this.boardY = this.baseBoardY - shift;
+
+                if (!this.isMoving && !this.isRemoved) {
+                    this.targetX = this.boardX;
+                    this.targetY = this.boardY;
+                }
+            }
+
+            update() {
+                if (gameInstance && gameInstance.dragTile === this) return;
+
+                const k = 0.12; // 减慢飞行速度（原0.25）
+                const diffX = this.targetX - this.x;
+                const diffY = this.targetY - this.y;
+                this.x += diffX * k;
+                this.y += diffY * k;
+
+                this.scale += (this.targetScale - this.scale) * k;
+
+                if (Math.abs(diffX) < 1 && Math.abs(diffY) < 1 && Math.abs(this.targetScale - this.scale) < 0.01) {
+                    this.x = this.targetX;
+                    this.y = this.targetY;
+                    this.scale = this.targetScale;
+                    this.isMoving = false;
+                } else {
+                    this.isMoving = true;
+                }
+
+                if (this.shakeTimer > 0) {
+                    this.shakeTimer--;
+                    this.shakeOffsetX = Math.sin(this.shakeTimer * 0.8) * 8;
+                    if (this.shakeTimer === 0) this.shakeOffsetX = 0;
+                }
+            }
+
+            draw(ctx) {
+                if (this.isRemoved) return;
+
+                ctx.save();
+                ctx.translate(this.x + this.shakeOffsetX + this.animOffsetX, this.y);
+                ctx.scale(this.scale, this.scale);
+
+                const w = this.w;
+                const h = this.h;
+
+                const shouldDim = !configHighlightOnlyClickable && !this.isClickable && !this.inTray;
+
+                // 绘制文字牌面
+                WordDrawer.draw(ctx, this.type, w);
+
+                // 蒙灰遮罩
+                if (shouldDim) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    const delta = 4;
+                    const offsetX = -3;
+                    const offsetY = 2;
+                    const cornerRadius = 10;
+                    const sW = w - delta;
+                    const sH = h - delta;
+
+                    ctx.beginPath();
+                    ctx.roundRect(
+                        -w / 2 + (delta / 2) + offsetX,
+                        -h / 2 + (delta / 2) + offsetY,
+                        sW, sH, cornerRadius
+                    );
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            isHover(mx, my) {
+                return mx > this.x - this.w / 2 &&
+                    mx < this.x + this.w / 2 &&
+                    my > this.y - this.h / 2 &&
+                    my < this.y + this.h / 2;
+            }
+        }
+
+        const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 3, WIN: 4 };
+
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.container = document.getElementById('gameContainer');
+                this.width = 0; this.height = 0; this.scaleRatio = 1;
+                this.state = STATE.MENU;
+                this.tiles = [];
+                this.tray = [];
+                this.particles = [];
+                this.score = 0;
+                this.remainingTilesCount = 0;
+                this.matchAnimations = [];
+
+                this.dragTile = null;
+                this.dragStartPos = { x: 0, y: 0 };
+                this.hasMoved = false;
+
+                const onStart = (e) => {
+                    if (e.type === 'touchstart') e.preventDefault();
+                    let cx, cy;
+                    if (e.touches && e.touches.length > 0) {
+                        cx = e.touches[0].clientX;
+                        cy = e.touches[0].clientY;
+                    } else {
+                        cx = e.clientX;
+                        cy = e.clientY;
+                    }
+                    this.handleDown(cx, cy);
+                };
+
+                this.canvas.addEventListener('mousedown', onStart);
+                this.canvas.addEventListener('touchstart', onStart, { passive: false });
+
+                const onMove = (e) => {
+                    if (this.dragTile && e.type === 'touchmove') {
+                        if (e.cancelable) e.preventDefault();
+                    }
+                    let cx, cy;
+                    if (e.touches && e.touches.length > 0) {
+                        cx = e.touches[0].clientX;
+                        cy = e.touches[0].clientY;
+                    } else {
+                        cx = e.clientX;
+                        cy = e.clientY;
+                    }
+                    this.handleMove(cx, cy);
+                };
+
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('touchmove', onMove, { passive: false });
+
+                const onUp = () => { this.handleUp(); };
+                window.addEventListener('mouseup', onUp);
+                window.addEventListener('touchend', onUp);
+
+                window.addEventListener('resize', () => this.resize());
+                this.resize();
+                this.loop();
+            }
+
+            resize() {
+                const winW = window.innerWidth;
+                const winH = window.innerHeight;
+                const isPC = winW > winH;
+                if (isPC) {
+                    this.height = winH * 0.95;
+                    this.width = this.height * CONFIG.ASPECT_RATIO;
+                    this.canvas.style.borderRadius = '30px';
+                    this.container.style.width = this.width + 'px';
+                    this.container.style.height = this.height + 'px';
+                    this.container.style.borderRadius = '30px';
+                } else {
+                    this.width = winW;
+                    this.height = winH;
+                    this.canvas.style.borderRadius = '0';
+                    this.container.style.width = '100%';
+                    this.container.style.height = '100%';
+                    this.container.style.borderRadius = '0';
+                }
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                this.scaleRatio = this.width / CONFIG.DESIGN_WIDTH;
+            }
+
+            transformInput(cx, cy) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: (cx - rect.left) / this.scaleRatio,
+                    y: (cy - rect.top) / this.scaleRatio
+                };
+            }
+
+            startGame() {
+                this.state = STATE.PLAYING;
+                this.score = 0;
+                this.tray = [];
+                this.particles = [];
+                this.matchAnimations = [];
+                this.undoCount = 0;
+                this.maxUndo = 3;
+                while (true) {
+                    if (this.initLevel()) break;
+                }
+                this.updateStackingOffsets();
+            }
+
+            updateStackingOffsets() {
+                this.tiles.forEach(t => t.updateStackPosition(stackOffsetFactor));
+            }
+
+            initLevel() {
+                this.tiles = [];
+                const layoutData = this.generateLayoutData();
+
+                const startY = CONFIG.DESIGN_HEIGHT * 0.55;
+                const tileSize = CONFIG.CARD_SIZE;
+                const rowSpacing = tileSize * CONFIG.ROW_SPACING_FACTOR;
+
+                let allTiles = [];
+                let globalId = 0;
+
+                let minGX = Infinity, maxGX = -Infinity;
+                let minGY = Infinity, maxGY = -Infinity;
+                let tempTiles = [];
+
+                for (let layer of layoutData) {
+                    for (let t of layer.tiles) {
+                        let rawX = (t.c + layer.offsetX) * tileSize;
+                        let rawY = (t.r + layer.offsetY) * rowSpacing;
+
+                        minGX = Math.min(minGX, rawX);
+                        maxGX = Math.max(maxGX, rawX);
+                        minGY = Math.min(minGY, rawY);
+                        maxGY = Math.max(maxGY, rawY);
+
+                        tempTiles.push({
+                            layerIndex: layer.layerIndex,
+                            gridR: t.r, gridC: t.c,
+                            rawX: rawX, rawY: rawY
+                        });
+                    }
+                }
+
+                const contentW = maxGX - minGX;
+                const contentH = maxGY - minGY;
+                const centerX = CONFIG.DESIGN_WIDTH / 2;
+                const centerY = startY;
+
+                const offsetX = centerX - (minGX + contentW / 2);
+                const offsetY = centerY - (minGY + contentH / 2);
+
+                for (let t of tempTiles) {
+                    let finalX = t.rawX + offsetX;
+                    let finalY = t.rawY + offsetY;
+                    allTiles.push(new Tile(globalId++, null, finalX, finalY, t.layerIndex, t.gridR, t.gridC));
+                }
+
+                if (allTiles.length % 2 !== 0) {
+                    allTiles.sort((a, b) => b.layerIndex - a.layerIndex);
+                    allTiles.shift();
+                }
+
+                allTiles.sort((a, b) => {
+                    if (a.layerIndex !== b.layerIndex) return a.layerIndex - b.layerIndex;
+                    if (a.gridR !== b.gridR) return a.gridR - b.gridR;
+                    return a.gridC - b.gridC;
+                });
+
+                this.tiles = allTiles;
+                this.remainingTilesCount = allTiles.length;
+                if (this.remainingTilesCount === 0) return false;
+
+                let totalPairs = this.remainingTilesCount / 2;
+                let typePool = [];
+                let availableTypes = [];
+                for (let i = 0; i < CONFIG.WORD_TYPES; i++) availableTypes.push(i);
+                availableTypes.sort(() => Math.random() - 0.5);
+
+                let iconIdx = 0;
+                while (typePool.length < totalPairs) {
+                    let n = Math.floor(Math.random() * (maxPairs - minPairs + 1)) + minPairs;
+                    if (typePool.length + n > totalPairs) n = totalPairs - typePool.length;
+                    let word = availableTypes[iconIdx % availableTypes.length];
+                    iconIdx++;
+                    for (let k = 0; k < n; k++) typePool.push(word);
+                }
+                typePool.sort(() => Math.random() - 0.5);
+
+                let simTiles = this.tiles.map(t => ({
+                    id: t.id,
+                    boardX: t.boardX, boardY: t.boardY,
+                    baseBoardX: t.baseBoardX, baseBoardY: t.baseBoardY,
+                    gridR: t.gridR, gridC: t.gridC, layerIndex: t.layerIndex,
+                    w: t.w, h: t.h,
+                    isRemoved: false,
+                    realTile: t
+                }));
+
+                let fillSuccess = true;
+
+                // 先随机填入30%的牌（不保证可解性，增加难度）
+                const randomFillCount = Math.floor(typePool.length * 0.3);
+                let unassigned = simTiles.filter(t => !t.isRemoved);
+                unassigned.sort(() => Math.random() - 0.5);
+
+                for (let i = 0; i < randomFillCount && typePool.length > 0; i++) {
+                    if (unassigned.length < 2) break;
+                    let t1 = unassigned.shift();
+                    let t2 = unassigned.shift();
+                    let type = typePool.pop();
+                    t1.realTile.type = type;
+                    t2.realTile.type = type;
+                    t1.isRemoved = true;
+                    t2.isRemoved = true;
+                }
+
+                // 剩余70%用模拟可解性分配
+                while (typePool.length > 0) {
+                    let clickableCandidates = [];
+                    for (let t of simTiles) {
+                        if (t.isRemoved) continue;
+                        if (this.checkClickableLogicGrid(t, simTiles)) {
+                            clickableCandidates.push(t);
+                        }
+                    }
+
+                    if (clickableCandidates.length < 2) {
+                        fillSuccess = false;
+                        break;
+                    }
+
+                    let idx1 = Math.floor(Math.random() * clickableCandidates.length);
+                    let t1 = clickableCandidates[idx1];
+                    clickableCandidates.splice(idx1, 1);
+
+                    let idx2 = Math.floor(Math.random() * clickableCandidates.length);
+                    let t2 = clickableCandidates[idx2];
+
+                    let type = typePool.pop();
+                    t1.realTile.type = type;
+                    t2.realTile.type = type;
+
+                    t1.isRemoved = true;
+                    t2.isRemoved = true;
+                }
+
+                if (!fillSuccess) return false;
+
+                this.updateClickability();
+                return true;
+            }
+
+            checkClickableLogicGrid(t, allTilesList) {
+                let isCovered = false;
+                let isLeftBlocked = false;
+                let isRightBlocked = false;
+
+                const tileArea = t.w * t.h;
+                const COVER_RATIO = 0.25;
+
+                for (let other of allTilesList) {
+                    if (t.id === other.id || other.isRemoved || other.inTray) continue;
+
+                    const dx = other.baseBoardX - t.baseBoardX;
+                    const dy = other.baseBoardY - t.baseBoardY;
+                    const absDx = Math.abs(dx);
+                    const absDy = Math.abs(dy);
+
+                    if (other.layerIndex > t.layerIndex) {
+                        const overlapX = t.w - absDx;
+                        const overlapY = t.h - absDy;
+                        if (overlapX > 0 && overlapY > 0) {
+                            if ((overlapX * overlapY) / tileArea > COVER_RATIO) {
+                                isCovered = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (other.layerIndex === t.layerIndex && other.gridR === t.gridR) {
+                        const diffC = other.gridC - t.gridC;
+                        if (diffC === -1) isLeftBlocked = true;
+                        else if (diffC === 1) isRightBlocked = true;
+                    }
+                }
+
+                if (isCovered) return false;
+                if (isLeftBlocked && isRightBlocked) return false;
+                return true;
+            }
+
+            updateClickability() {
+                for (let t of this.tiles) {
+                    if (t.isRemoved || t.inTray) continue;
+                    t.isClickable = this.checkClickableLogicGrid(t, this.tiles);
+                }
+            }
+
+            generateLayoutData() {
+                let layers = [];
+                const baseRows = 6;
+                const baseCols = 6;
+
+                let baseTiles = [];
+                for (let r = 0; r < baseRows; r++) {
+                    for (let c = 0; c < baseCols; c++) {
+                        baseTiles.push({ r: r, c: c });
+                    }
+                }
+                layers.push({ layerIndex: 0, offsetX: 0, offsetY: 0, tiles: baseTiles });
+
+                for (let i = 1; i < configLayers; i++) {
+                    let prev = layers[i - 1];
+                    let offX, offY;
+                    let attempts = 0;
+
+                    do {
+                        const type = Math.floor(Math.random() * 3);
+                        offX = (type === 0 || type === 2) ? 0.5 : 0;
+                        offY = (type === 1 || type === 2) ? 0.5 : 0;
+                        attempts++;
+                    } while (offX === prev.offsetX && offY === prev.offsetY && attempts < 10);
+
+                    if (offX === prev.offsetX && offY === prev.offsetY) {
+                        offX = (prev.offsetX === 0) ? 0.5 : 0;
+                    }
+
+                    let maxR = baseRows - (offY > 0 ? 1 : 0);
+                    let maxC = baseCols - (offX > 0 ? 1 : 0);
+
+                    let decay = Math.pow(0.70, i);
+                    let targetCount = Math.floor(baseRows * baseCols * decay);
+                    targetCount = Math.max(2, targetCount);
+
+                    let layerTiles = [];
+                    let centerR = maxR / 2 - 0.5;
+                    let centerC = maxC / 2 - 0.5;
+
+                    let candidates = [];
+                    for (let r = 0; r < maxR; r++) {
+                        for (let c = 0; c < maxC; c++) {
+                            candidates.push({ r, c });
+                        }
+                    }
+                    candidates.sort((a, b) => {
+                        let da = Math.abs(a.r - centerR) + Math.abs(a.c - centerC);
+                        let db = Math.abs(b.r - centerR) + Math.abs(b.c - centerC);
+                        return (da - db) + (Math.random() - 0.5) * 2;
+                    });
+
+                    for (let k = 0; k < targetCount; k++) {
+                        if (candidates.length > 0) {
+                            layerTiles.push(candidates.shift());
+                        }
+                    }
+
+                    layers.push({
+                        layerIndex: i,
+                        offsetX: offX,
+                        offsetY: offY,
+                        tiles: layerTiles
+                    });
+                }
+                return layers;
+            }
+
+            handleDown(rawX, rawY) {
+                const panelRect = ingamePanel.getBoundingClientRect();
+                if (ingamePanel.style.display === 'block') {
+                    if (rawX >= panelRect.left && rawX <= panelRect.right &&
+                        rawY >= panelRect.top && rawY <= panelRect.bottom) {
+                        return;
+                    }
+                }
+                const btnRect = document.getElementById('ingameSettingsBtn').getBoundingClientRect();
+                if (rawX >= btnRect.left && rawX <= btnRect.right && rawY >= btnRect.top && rawY <= btnRect.bottom) {
+                    return;
+                }
+
+                const { x, y } = this.transformInput(rawX, rawY);
+
+                if (this.state === STATE.MENU) { }
+                else if (this.state === STATE.GAMEOVER || this.state === STATE.WIN) {
+                    const cx = CONFIG.DESIGN_WIDTH / 2;
+                    const cy = CONFIG.DESIGN_HEIGHT / 2;
+                    if (this.state === STATE.GAMEOVER) {
+                        if (this.checkBtn(x, y, cx, cy + 120)) {
+                            this.handleRevive();
+                        }
+                        if (this.checkBtn(x, y, cx, cy + 220)) { showMenu(); this.state = STATE.MENU; }
+                    } else {
+                        if (this.checkBtn(x, y, cx, cy + 180)) { showMenu(); this.state = STATE.MENU; }
+                    }
+                }
+                else if (this.state === STATE.PLAYING) {
+                    if (x > CONFIG.DESIGN_WIDTH - 140 && x < CONFIG.DESIGN_WIDTH - 20 && y > 20 && y < 80) {
+                        showMenu(); this.state = STATE.MENU; return;
+                    }
+                    const undoY = CONFIG.DESIGN_HEIGHT - 80;
+                    if (this.tray.length > 0 && x > CONFIG.DESIGN_WIDTH / 2 - 120 && x < CONFIG.DESIGN_WIDTH / 2 + 120 && y > undoY - 40 && y < undoY + 40) {
+                        this.handleUndo(); return;
+                    }
+
+                    for (let i = this.tiles.length - 1; i >= 0; i--) {
+                        let t = this.tiles[i];
+                        if (!t.isRemoved && !t.inTray && t.isHover(x, y)) {
+                            if (t.isClickable) {
+                                this.dragTile = t;
+                                this.dragStartPos = { x: x, y: y };
+                                this.hasMoved = false;
+                            } else {
+                                t.shakeTimer = 8;
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
+            handleMove(rawX, rawY) {
+                if (!this.dragTile) return;
+                const { x, y } = this.transformInput(rawX, rawY);
+
+                const dx = x - this.dragStartPos.x;
+                const dy = y - this.dragStartPos.y;
+
+                if (!this.hasMoved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    this.hasMoved = true;
+                }
+
+                if (this.hasMoved) {
+                    this.dragTile.x = this.dragTile.targetX + dx;
+                    this.dragTile.y = this.dragTile.targetY + dy;
+                }
+            }
+
+            handleUp() {
+                if (!this.dragTile) return;
+                if (!this.hasMoved) {
+                    this.onTileClick(this.dragTile);
+                }
+                this.dragTile = null;
+                this.hasMoved = false;
+            }
+
+            checkBtn(mx, my, bx, by) {
+                return mx > bx - 100 && mx < bx + 100 && my > by - 40 && my < by + 40;
+            }
+
+            handleUndo() {
+                if (this.tray.length === 0 || this.undoCount >= this.maxUndo) return;
+                let tile = this.tray.pop();
+                tile.inTray = false;
+                tile.isMatching = false;
+                tile.targetX = tile.boardX;
+                tile.targetY = tile.boardY;
+                tile.targetScale = 1;
+                this.undoCount++;
+                this.recalcTrayPositions();
+                this.updateClickability();
+            }
+
+            handleRevive() {
+                while (this.tray.length > 0) {
+                    let tile = this.tray.pop();
+                    tile.inTray = false;
+                    tile.isMatching = false;
+                    tile.targetX = tile.boardX;
+                    tile.targetY = tile.boardY;
+                    tile.targetScale = 1;
+                }
+                this.recalcTrayPositions();
+                this.updateClickability();
+                this.state = STATE.PLAYING;
+            }
+
+            onTileClick(tile) {
+                if (this.tray.length >= CONFIG.TRAY_CAPACITY) return;
+
+                // 飞出反馈：弹出缩放 + 小粒子爆发
+                tile.scale = 1.3;
+                for (let i = 0; i < 6; i++) {
+                    this.particles.push(new Particle(tile.x, tile.y, tile.type));
+                }
+
+                tile.inTray = true;
+
+                let insertIndex = this.tray.length;
+                for (let i = this.tray.length - 1; i >= 0; i--) {
+                    if (this.tray[i].type === tile.type) {
+                        insertIndex = i + 1;
+                        break;
+                    }
+                }
+
+                this.tray.splice(insertIndex, 0, tile);
+                this.updateClickability();
+                this.recalcTrayPositions();
+            }
+
+            calculateTrayMetrics() {
+                const screenW = CONFIG.DESIGN_WIDTH;
+                const maxTrayW = screenW * 0.92;
+                const gap = 8;
+
+                const rawW = CONFIG.TRAY_CAPACITY * CONFIG.CARD_SIZE + (CONFIG.TRAY_CAPACITY + 1) * gap;
+
+                let slotSize = CONFIG.CARD_SIZE;
+                if (rawW > maxTrayW) {
+                    slotSize = (maxTrayW - (CONFIG.TRAY_CAPACITY + 1) * gap) / CONFIG.TRAY_CAPACITY;
+                }
+
+                slotSize = slotSize * 0.75;
+
+                const totalW = CONFIG.TRAY_CAPACITY * slotSize + (CONFIG.TRAY_CAPACITY + 1) * gap;
+                const startX = (screenW - totalW) / 2;
+
+                return { slotSize, startX, trayY: 180, gap, totalW };
+            }
+
+            recalcTrayPositions() {
+                const m = this.calculateTrayMetrics();
+                const targetScale = m.slotSize / CONFIG.CARD_SIZE;
+
+                this.tray.forEach((t, i) => {
+                    let centerX = m.startX + m.gap + i * (m.slotSize + m.gap) + m.slotSize / 2;
+                    if (!t.isMatching) {
+                        t.targetX = centerX;
+                        t.targetY = m.trayY;
+                        t.targetScale = targetScale;
+                    }
+                });
+            }
+
+            update() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update();
+                    if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+                }
+
+                for (let i = this.matchAnimations.length - 1; i >= 0; i--) {
+                    const anim = this.matchAnimations[i];
+                    anim.timer++;
+                    const timer = anim.timer;
+                    const tiles = anim.tiles;
+
+                    if (timer <= 18) {
+                        // 靠近阶段（加长）
+                        tiles.forEach(t => {
+                            const dir = t.x < anim.centerX ? -1 : 1;
+                            const progress = timer / 18;
+                            t.animOffsetX = dir * (t.w * 0.5) * Math.sin(progress * Math.PI / 2);
+                        });
+                    }
+                    else if (timer <= 28) {
+                        // 碰撞弹开阶段（加长）
+                        tiles.forEach(t => {
+                            const dir = t.x < anim.centerX ? -1 : 1;
+                            const maxOffset = t.w * 0.5;
+                            const progress = (timer - 18) / 10;
+                            t.animOffsetX = dir * maxOffset * (1 - progress);
+                            // 碰撞时缩放抖动
+                            if (timer === 19) t.scale = 1.2;
+                        });
+                    }
+                    else {
+                        this.finalizeMatch(anim);
+                        this.matchAnimations.splice(i, 1);
+                    }
+                }
+
+                if (this.state === STATE.PLAYING) {
+                    let anyMoving = false;
+                    this.tiles.forEach(t => {
+                        t.update();
+                        if (t.inTray && t.isMoving) anyMoving = true;
+                    });
+                    if (this.tray.length > 0 && this.state !== STATE.GAMEOVER) {
+                        this.checkMatch();
+                    }
+                }
+            }
+
+            checkMatch() {
+                let groups = {};
+                this.tray.forEach(t => {
+                    if (t.isMatching) return;
+                    if (!groups[t.type]) groups[t.type] = [];
+                    groups[t.type].push(t);
+                });
+
+                let foundNewMatch = false;
+                for (let type in groups) {
+                    if (groups[type].length >= 2) {
+                        this.startMatchAnimation(groups[type].slice(0, 2));
+                        foundNewMatch = true;
+                    }
+                }
+                const isTrayStable = !this.tray.some(t => t.isMoving);
+                if (!foundNewMatch && this.tray.length >= CONFIG.TRAY_CAPACITY && this.matchAnimations.length === 0 && isTrayStable) {
+                    this.state = STATE.GAMEOVER;
+                }
+            }
+
+            startMatchAnimation(tilesToMatch) {
+                tilesToMatch.forEach(t => t.isMatching = true);
+                const cx = (tilesToMatch[0].x + tilesToMatch[1].x) / 2;
+                this.matchAnimations.push({
+                    timer: 0,
+                    tiles: tilesToMatch,
+                    centerX: cx
+                });
+            }
+
+            finalizeMatch(anim) {
+                const tiles = anim.tiles;
+                tiles.forEach(t => {
+                    t.isRemoved = true;
+                    t.isMatching = false;
+                    for (let i = 0; i < 30; i++) this.particles.push(new Particle(t.x, t.y, t.type));
+                });
+
+                this.score += 10;
+                this.remainingTilesCount -= 2;
+                this.tray = this.tray.filter(t => !t.isRemoved);
+                this.recalcTrayPositions();
+
+                if (this.remainingTilesCount === 0) {
+                    this.state = STATE.WIN;
+                }
+            }
+
+            // 语音触发：处理匹配到的单词
+            handleVoiceWord(wordIndex) {
+                // 找到场上该单词的所有牌（未消除、未在托盘中）
+                let matchingTiles = this.tiles.filter(t =>
+                    !t.isRemoved && !t.inTray && t.type === wordIndex
+                );
+
+                if (matchingTiles.length === 0) {
+                    // 场上没有这个词 → 晃动话筒
+                    shakeMic();
+                    return;
+                }
+
+                // 找出可点击的牌
+                let clickable = matchingTiles.filter(t => t.isClickable);
+                let freeSlots = CONFIG.TRAY_CAPACITY - this.tray.length;
+
+                if (clickable.length >= 2 && freeSlots >= 2) {
+                    // 两张都可点击且托盘有空间 → 一起飞
+                    this.onTileClick(clickable[0]);
+                    this.onTileClick(clickable[1]);
+                } else if (clickable.length >= 1 && freeSlots >= 1) {
+                    // 只飞一张
+                    this.onTileClick(clickable[0]);
+                } else if (clickable.length === 0) {
+                    // 都被卡住 → 晃动对应的牌
+                    matchingTiles.forEach(t => t.shakeTimer = 12);
+                } else {
+                    // 托盘满了 → 晃动话筒提示
+                    shakeMic();
+                }
+            }
+
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+
+            draw() {
+                let grad = this.ctx.createLinearGradient(0, 0, 0, this.height);
+                grad.addColorStop(0, CONFIG.COLORS.bgGradientStart);
+                grad.addColorStop(1, CONFIG.COLORS.bgGradientEnd);
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                this.ctx.save();
+                this.ctx.scale(this.scaleRatio, this.scaleRatio);
+
+                if (this.state === STATE.MENU) {
+                } else if (this.state === STATE.PLAYING || this.state === STATE.GAMEOVER || this.state === STATE.WIN) {
+                    this.drawGameUI();
+
+                    let dragging = this.dragTile;
+                    this.tiles.forEach(t => {
+                        if (!t.inTray && !t.isRemoved && t !== dragging) t.draw(this.ctx);
+                    });
+
+                    if (dragging && !dragging.isRemoved) {
+                        dragging.draw(this.ctx);
+                    }
+
+                    let trayTiles = this.tiles.filter(t => t.inTray && !t.isRemoved);
+                    trayTiles.sort((a, b) => a.x - b.x);
+                    trayTiles.forEach(t => t.draw(this.ctx));
+
+                    this.particles.forEach(p => p.draw(this.ctx));
+
+                    if (this.state === STATE.GAMEOVER) this.drawResult("GAME OVER");
+                    if (this.state === STATE.WIN) this.drawResult("YOU WIN!");
+                }
+                this.ctx.restore();
+            }
+
+            drawGameUI() {
+                this.ctx.textAlign = 'center';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.beginPath();
+                this.ctx.roundRect(CONFIG.DESIGN_WIDTH / 2 - 90, 20, 180, 50, 25);
+                this.ctx.fill();
+                this.ctx.fillStyle = CONFIG.COLORS.primary;
+                this.ctx.font = 'bold 28px Arial';
+                this.ctx.fillText(`Left: ${this.remainingTilesCount}`, CONFIG.DESIGN_WIDTH / 2, 55);
+
+                const homeBtnX = CONFIG.DESIGN_WIDTH - 80;
+                const homeBtnY = 45;
+                this.ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                this.ctx.beginPath();
+                this.ctx.roundRect(homeBtnX - 50, homeBtnY - 25, 100, 50, 25);
+                this.ctx.fill();
+                this.ctx.fillStyle = CONFIG.COLORS.text;
+                this.ctx.font = 'bold 20px Arial';
+                this.ctx.fillText("MENU", homeBtnX, homeBtnY + 2);
+
+                // Tray
+                const m = this.calculateTrayMetrics();
+                const trayH = m.slotSize + 2 * m.gap;
+                const trayY = m.trayY - trayH / 2;
+
+                this.ctx.fillStyle = CONFIG.COLORS.trayBg;
+                this.ctx.strokeStyle = CONFIG.COLORS.trayBorder;
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.roundRect(m.startX, trayY, m.totalW, trayH, 20);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                const undoY = CONFIG.DESIGN_HEIGHT - 80;
+                let canUndo = this.tray.length > 0 && this.undoCount < this.maxUndo;
+                let undoColor = canUndo ? CONFIG.COLORS.undoBtn : CONFIG.COLORS.disabledBtn;
+                let leftCount = this.maxUndo - this.undoCount;
+                this.drawBtn(CONFIG.DESIGN_WIDTH / 2, undoY, 240, 80, `撤回 (${leftCount})`, undoColor);
+            }
+
+            drawResult(text) {
+                this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                this.ctx.fillRect(0, 0, CONFIG.DESIGN_WIDTH, CONFIG.DESIGN_HEIGHT);
+                const cx = CONFIG.DESIGN_WIDTH / 2;
+                const cy = CONFIG.DESIGN_HEIGHT / 2;
+
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 80px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(text, cx, cy - 80);
+
+                if (text === "GAME OVER") {
+                    this.drawBtn(cx, cy + 120, 260, 80, "复活", CONFIG.COLORS.reviveBtn);
+                    this.drawBtn(cx, cy + 220, 260, 80, "菜单", CONFIG.COLORS.primary);
+                } else {
+                    this.drawBtn(cx, cy + 180, 240, 80, "下一关", CONFIG.COLORS.primary);
+                }
+            }
+
+            drawBtn(x, y, w, h, text, color) {
+                this.ctx.fillStyle = color;
+                this.ctx.beginPath();
+                this.ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 36px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(text, x, y);
+            }
+        }
+
+        /**
+         * 话筒状态控制
+         */
+        let micEnabled = true;
+
+        // 显示语音识别文字
+        let micTextTimer = null;
+        function showMicText(text, type) {
+            const el = document.getElementById('micText');
+            el.textContent = text;
+            el.className = 'show';
+            if (type === 'success') el.classList.add('success');
+            else if (type === 'fail') el.classList.add('fail');
+
+            clearTimeout(micTextTimer);
+            micTextTimer = setTimeout(() => {
+                el.className = '';
+            }, type === 'interim' ? 2000 : 1200);
+        }
+
+        // 晃动话筒（识别不到单词时）
+        function shakeMic() {
+            const btn = document.getElementById('micBtn');
+            btn.classList.remove('shake', 'active'); // 暂停 pulse 避免动画冲突
+            void btn.offsetWidth; // 强制重排触发动画重启
+            btn.classList.add('shake');
+            setTimeout(() => {
+                btn.classList.remove('shake');
+                if (micEnabled) btn.classList.add('active'); // 恢复 pulse
+            }, 400);
+        }
+
+        /**
+         * 语音识别匹配后的处理入口
+         * @param {number} wordIndex - 匹配到的单词索引，-1表示未匹配
+         */
+        function handleVoiceResult(wordIndex) {
+            if (!gameInstance || gameInstance.state !== STATE.PLAYING) return;
+
+            if (wordIndex === -1) {
+                // 识别不到 → 晃动话筒
+                shakeMic();
+                return;
+            }
+
+            gameInstance.handleVoiceWord(wordIndex);
+        }
+
+        /**
+         * 语音识别引擎
+         */
+        class VoiceEngine {
+            constructor() {
+                this.recognition = null;
+                this.supported = false;
+                this.running = false;
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    // 不支持语音，隐藏整个话筒区域
+                    document.getElementById('micArea').style.display = 'none';
+                    return;
+                }
+
+                this.supported = true;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = true;
+                this.recognition.interimResults = true;
+                this.recognition.maxAlternatives = 3;
+
+                this.recognition.onresult = (event) => {
+                    if (!micEnabled) return;
+                    this.processResults(event);
+                };
+
+                this.recognition.onend = () => {
+                    // 自动重启（除非主动关闭）
+                    if (this.running && micEnabled) {
+                        try { this.recognition.start(); } catch(e) {}
+                    }
+                };
+
+                this.recognition.onerror = (event) => {
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        // 用户拒绝麦克风权限 → 优雅降级为纯点击模式
+                        this.running = false;
+                        micEnabled = false;
+                        const btn = document.getElementById('micBtn');
+                        btn.classList.add('off');
+                        btn.classList.remove('active');
+                    }
+                    // no-speech / aborted 等非致命错误忽略
+                };
+
+                this.lastProcessedIndex = 0;
+            }
+
+            start() {
+                if (!this.supported || this.running) return;
+                this.running = true;
+                this.recognition.lang = getCurrentLang().speechLang;
+                this.lastProcessedIndex = 0;
+                try { this.recognition.start(); } catch(e) {}
+            }
+
+            stop() {
+                if (!this.supported) return;
+                this.running = false;
+                try { this.recognition.stop(); } catch(e) {}
+            }
+
+            // 切换语言时重启
+            restart() {
+                if (!this.supported || !this.running) return;
+                try { this.recognition.stop(); } catch(e) {}
+                setTimeout(() => {
+                    this.recognition.lang = getCurrentLang().speechLang;
+                    this.lastProcessedIndex = 0;
+                    try { this.recognition.start(); } catch(e) {}
+                }, 200);
+            }
+
+            processResults(event) {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    // 显示实时听到的文字
+                    const liveText = result[0].transcript.trim();
+                    if (liveText.length > 0 && !result.isFinal) {
+                        showMicText(liveText, 'interim');
+                    }
+
+                    // 处理每个候选结果
+                    for (let alt = 0; alt < result.length; alt++) {
+                        const transcript = result[alt].transcript.trim().toLowerCase();
+                        if (transcript.length === 0) continue;
+
+                        const matched = this.matchWord(transcript);
+                        if (matched !== -1) {
+                            // 显示命中词
+                            const lang = getCurrentLang().code;
+                            showMicText(WORDS[matched][lang] + ' ✓', 'success');
+                            handleVoiceResult(matched);
+                            this.debounce();
+                            return;
+                        }
+                    }
+
+                    // final 结果但没匹配到任何词
+                    if (result.isFinal) {
+                        showMicText(liveText + ' ✗', 'fail');
+                        handleVoiceResult(-1);
+                    }
+                }
+            }
+
+            // 防抖：匹配成功后短暂忽略后续结果
+            debounce() {
+                const wasEnabled = micEnabled;
+                micEnabled = false;
+                setTimeout(() => { micEnabled = wasEnabled; }, 800);
+            }
+
+            // 模糊匹配逻辑（多层级：精确 → 分词 → 音素 → 编辑距离）
+            matchWord(transcript) {
+                const lang = getCurrentLang().code;
+
+                // 获取场上还存在的单词类型
+                let activeTypes = new Set();
+                if (gameInstance && gameInstance.state === STATE.PLAYING) {
+                    gameInstance.tiles.forEach(t => {
+                        if (!t.isRemoved && !t.inTray) activeTypes.add(t.type);
+                    });
+                }
+
+                // 将 transcript 拆成多个词段逐一尝试
+                const segments = transcript.split(/[\s,.\-]+/).filter(s => s.length > 0);
+                segments.unshift(transcript); // 整句也作为候选
+
+                for (let seg of segments) {
+                    const result = this.matchSegment(seg, lang, activeTypes);
+                    if (result !== -1) return result;
+                }
+
+                return -1;
+            }
+
+            matchSegment(seg, lang, activeTypes) {
+                // 1. 精确匹配
+                for (let i = 0; i < WORDS.length; i++) {
+                    if (!activeTypes.has(i)) continue;
+                    const word = WORDS[i][lang].toLowerCase();
+                    if (seg === word) return i;
+                }
+
+                // 2. 包含匹配
+                for (let i = 0; i < WORDS.length; i++) {
+                    if (!activeTypes.has(i)) continue;
+                    const word = WORDS[i][lang].toLowerCase();
+                    if (word.length >= 3 && seg.includes(word)) return i;
+                }
+
+                // 3. 音素匹配（Double Metaphone）- 主要针对英文
+                if (lang === 'en') {
+                    const segPhon = this.metaphone(seg);
+                    let phonMatch = -1;
+                    for (let i = 0; i < WORDS.length; i++) {
+                        if (!activeTypes.has(i)) continue;
+                        const wordPhon = this.metaphone(WORDS[i].en.toLowerCase());
+                        if (segPhon.length >= 2 && wordPhon.length >= 2 && segPhon === wordPhon) {
+                            phonMatch = i;
+                            break;
+                        }
+                        // 音素编辑距离 <= 1 也算命中
+                        if (segPhon.length >= 2 && this.levenshtein(segPhon, wordPhon) <= 1) {
+                            phonMatch = i;
+                        }
+                    }
+                    if (phonMatch !== -1) return phonMatch;
+                }
+
+                // 4. Levenshtein 文字编辑距离
+                let bestMatch = -1;
+                let bestDist = Infinity;
+                for (let i = 0; i < WORDS.length; i++) {
+                    if (!activeTypes.has(i)) continue;
+                    const word = WORDS[i][lang].toLowerCase();
+                    const dist = this.levenshtein(seg, word);
+                    // 动态阈值：短词容忍1，长词容忍2
+                    const threshold = word.length <= 3 ? 1 : 2;
+                    if (dist <= threshold && dist < bestDist) {
+                        bestDist = dist;
+                        bestMatch = i;
+                    }
+                }
+
+                return bestMatch;
+            }
+
+            // 简化版 Metaphone 音素编码（针对英文短词优化）
+            metaphone(word) {
+                if (!word) return '';
+                word = word.toLowerCase().replace(/[^a-z]/g, '');
+                if (word.length === 0) return '';
+
+                // 基础规则映射
+                let result = '';
+                let i = 0;
+
+                // 处理首字母特殊情况
+                const start2 = word.substring(0, 2);
+                if (['ae', 'gn', 'kn', 'pn', 'wr'].includes(start2)) {
+                    i = 1;
+                }
+
+                while (i < word.length && result.length < 6) {
+                    const c = word[i];
+                    const prev = i > 0 ? word[i-1] : '';
+                    const next = i < word.length - 1 ? word[i+1] : '';
+
+                    // 跳过重复字母
+                    if (c === prev && c !== 'c') { i++; continue; }
+
+                    switch(c) {
+                        case 'a': case 'e': case 'i': case 'o': case 'u':
+                            if (i === 0) result += c; // 元音仅保留首位
+                            break;
+                        case 'b':
+                            if (prev !== 'm') result += 'B';
+                            break;
+                        case 'c':
+                            if (['e','i','y'].includes(next)) result += 'S';
+                            else result += 'K';
+                            break;
+                        case 'd':
+                            if (next === 'g' && ['e','i','y'].includes(word[i+2])) result += 'J';
+                            else result += 'T';
+                            break;
+                        case 'f': result += 'F'; break;
+                        case 'g':
+                            if (next === 'h' && i + 2 < word.length && !'aeiou'.includes(word[i+2])) { i++; break; }
+                            if (i > 0 && (next === 'n' || next === undefined)) break;
+                            if (['e','i','y'].includes(next) && prev !== 'g') result += 'J';
+                            else result += 'K';
+                            break;
+                        case 'h':
+                            if ('aeiou'.includes(next) && !'aeiou'.includes(prev)) result += 'H';
+                            break;
+                        case 'j': result += 'J'; break;
+                        case 'k':
+                            if (prev !== 'c') result += 'K';
+                            break;
+                        case 'l': result += 'L'; break;
+                        case 'm': result += 'M'; break;
+                        case 'n': result += 'N'; break;
+                        case 'p':
+                            if (next === 'h') { result += 'F'; i++; }
+                            else result += 'P';
+                            break;
+                        case 'q': result += 'K'; break;
+                        case 'r': result += 'R'; break;
+                        case 's':
+                            if (next === 'h' || (next === 'i' && word[i+2] === 'o')) result += 'X';
+                            else result += 'S';
+                            break;
+                        case 't':
+                            if (next === 'h') { result += '0'; i++; }
+                            else result += 'T';
+                            break;
+                        case 'v': result += 'F'; break;
+                        case 'w': case 'y':
+                            if ('aeiou'.includes(next)) result += c.toUpperCase();
+                            break;
+                        case 'x': result += 'KS'; break;
+                        case 'z': result += 'S'; break;
+                    }
+                    i++;
+                }
+                return result;
+            }
+
+            // Levenshtein 编辑距离
+            levenshtein(a, b) {
+                const m = a.length, n = b.length;
+                if (m === 0) return n;
+                if (n === 0) return m;
+                const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+                for (let i = 0; i <= m; i++) dp[i][0] = i;
+                for (let j = 0; j <= n; j++) dp[0][j] = j;
+                for (let i = 1; i <= m; i++) {
+                    for (let j = 1; j <= n; j++) {
+                        const cost = a[i-1] === b[j-1] ? 0 : 1;
+                        dp[i][j] = Math.min(
+                            dp[i-1][j] + 1,
+                            dp[i][j-1] + 1,
+                            dp[i-1][j-1] + cost
+                        );
+                    }
+                }
+                return dp[m][n];
+            }
+        }
+
+        let voiceEngine = null;
+
+        /**
+         * 话筒开关联动语音引擎
+         */
+        function toggleMic() {
+            const btn = document.getElementById('micBtn');
+            micEnabled = !micEnabled;
+            if (micEnabled) {
+                btn.classList.remove('off');
+                btn.classList.add('active');
+                if (voiceEngine) voiceEngine.start();
+            } else {
+                btn.classList.add('off');
+                btn.classList.remove('active');
+                if (voiceEngine) voiceEngine.stop();
+            }
+        }
+
+        window.onload = () => {
+            gameInstance = new Game();
+            voiceEngine = new VoiceEngine();
+        };
+    </script>
+</body>
+
+</html>

@@ -22,6 +22,12 @@ export interface Game {
   locked: boolean;
 }
 
+export interface FolderBinding {
+  gameId: string;
+  folderName: string;
+  boundAt: string;
+}
+
 export interface LogMessage {
   message: string;
   time?: string;

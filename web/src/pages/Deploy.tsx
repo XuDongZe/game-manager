@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import LogViewer from '../components/LogViewer';
 import { LogMessage } from '../types';
+import { packFileListToZip } from '../utils/folderPack';
 
 export default function Deploy() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Deploy() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (countdown === null) return;
@@ -75,11 +77,31 @@ export default function Deploy() {
     }
   }
 
+  async function acceptFolder(files: FileList) {
+    if (files.length === 0) return;
+    const folderName = (files[0] as File & { webkitRelativePath: string }).webkitRelativePath.split('/')[0] || files[0].name;
+    setFile(new File([], folderName));
+    setZipFile(null);
+    setIsPacking(true);
+    try {
+      const zipped = await packFileListToZip(files);
+      setZipFile(zipped);
+    } finally {
+      setIsPacking(false);
+    }
+  }
+
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       acceptFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      void acceptFolder(e.target.files);
     }
   };
 
@@ -200,6 +222,13 @@ export default function Deploy() {
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
+              <input
+                type="file"
+                ref={folderInputRef}
+                onChange={handleFolderChange}
+                style={{ display: 'none' }}
+                {...{ webkitdirectory: '', multiple: true } as React.InputHTMLAttributes<HTMLInputElement>}
+              />
               {isPacking ? (
                 <div>
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>⏳</div>
@@ -208,13 +237,19 @@ export default function Deploy() {
               ) : file ? (
                 <div>
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>
-                    {file.name.toLowerCase().match(/\.html?$/) ? '📄' : '📦'}
+                    {file.size === 0 ? '📁' : file.name.toLowerCase().match(/\.html?$/) ? '📄' : '📦'}
                   </div>
                   <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{file.name}</div>
                   <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
-                    {(file.size / 1024).toFixed(2)} KB
-                    {file.name.toLowerCase().match(/\.html?$/) && (
-                      <span style={{ marginLeft: '8px', color: '#10b981' }}>（已自动打包为 ZIP）</span>
+                    {file.size === 0 ? (
+                      <span style={{ color: '#10b981' }}>文件夹（已自动打包为 ZIP）</span>
+                    ) : (
+                      <>
+                        {(file.size / 1024).toFixed(2)} KB
+                        {file.name.toLowerCase().match(/\.html?$/) && (
+                          <span style={{ marginLeft: '8px', color: '#10b981' }}>（已自动打包为 ZIP）</span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -223,6 +258,23 @@ export default function Deploy() {
                   <div style={{ fontSize: '48px', marginBottom: '8px', color: '#9ca3af' }}>☁️</div>
                   <div style={{ fontWeight: 'bold', color: '#4b5563' }}>点击或拖拽文件到此处</div>
                   <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '4px' }}>支持 .zip 压缩包 或 .html 单文件</div>
+                  <div style={{ marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+                      style={{
+                        padding: '6px 14px',
+                        background: '#f3f4f6',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: '#4b5563',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📁 选择文件夹
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
