@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, DragEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import JSZip from 'jszip';
 import LogViewer from '../components/LogViewer';
 import { LogMessage } from '../types';
 import { packFileListToZip } from '../utils/folderPack';
+import { saveSourceName } from '../utils/folderHandle';
 
 export default function Deploy() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [uploader, setUploader] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [gameSlug, setGameSlug] = useState('');
+  const [uploader, setUploader] = useState(() => searchParams.get('uploader') ?? '');
+  const [displayName, setDisplayName] = useState(() => searchParams.get('displayName') ?? '');
+  const [gameSlug, setGameSlug] = useState(() => searchParams.get('gameSlug') ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPacking, setIsPacking] = useState(false);
@@ -135,6 +137,9 @@ export default function Deploy() {
       setDeployedGameId(msg.gameId);
       setDeployComplete(true);
       setCountdown(5);
+      if (file) {
+        saveSourceName(msg.gameId, file.name);
+      }
     }
   };
 

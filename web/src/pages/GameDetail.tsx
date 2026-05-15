@@ -12,6 +12,8 @@ import {
   removeHandle,
   checkPermission,
   requestPermission,
+  loadSourceName,
+  removeSourceName,
 } from '../utils/folderHandle';
 import { packFolderToZip } from '../utils/folderPack';
 
@@ -25,6 +27,7 @@ export default function GameDetail() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [boundFolderName, setBoundFolderName] = useState<string | null>(null);
+  const [sourceName, setSourceName] = useState<string | null>(null);
   const [isDeployingFolder, setIsDeployingFolder] = useState(false);
   const [folderDeployDone, setFolderDeployDone] = useState(false);
   const [folderDeployError, setFolderDeployError] = useState('');
@@ -60,6 +63,7 @@ export default function GameDetail() {
     loadHandle(gameId).then(handle => {
       if (handle) setBoundFolderName(handle.name);
     });
+    setSourceName(loadSourceName(gameId));
   }, [gameId]);
 
   useEffect(() => {
@@ -90,7 +94,9 @@ export default function GameDetail() {
   const handleUnbindFolder = useCallback(async () => {
     if (!gameId) return;
     await removeHandle(gameId);
+    removeSourceName(gameId);
     setBoundFolderName(null);
+    setSourceName(null);
   }, [gameId]);
 
   const handleQuickDeploy = useCallback(async () => {
@@ -275,63 +281,60 @@ export default function GameDetail() {
           </div>
 
           <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#f9fafb', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-            {boundFolderName ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '14px', color: '#4b5563' }}>
-                  📁 <strong>{boundFolderName}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void handleQuickDeploy()}
-                  disabled={isDeployingFolder}
-                  style={{
-                    padding: '5px 12px',
-                    background: 'var(--primary-color)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    cursor: isDeployingFolder ? 'not-allowed' : 'pointer',
-                    opacity: isDeployingFolder ? 0.7 : 1,
-                  }}
-                >
-                  {isDeployingFolder ? '部署中...' : '⚡ 快速重新部署'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleBindFolder()}
-                  style={{ padding: '5px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  更换文件夹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleUnbindFolder()}
-                  style={{ padding: '5px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '13px', cursor: 'pointer', color: '#9ca3af' }}
-                >
-                  解绑
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '13px', color: '#9ca3af' }}>未绑定本地文件夹</span>
-                <button
-                  type="button"
-                  onClick={() => void handleBindFolder()}
-                  style={{
-                    padding: '5px 12px',
-                    background: '#fff',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    color: '#4b5563',
-                  }}
-                >
-                  📁 绑定本地文件夹
-                </button>
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {boundFolderName ? (
+                <span style={{ fontSize: '14px', color: '#4b5563' }}>📁 <strong>{boundFolderName}</strong></span>
+              ) : sourceName ? (
+                <span style={{ fontSize: '14px', color: '#4b5563' }}>📄 <strong>{sourceName}</strong></span>
+              ) : (
+                <span style={{ fontSize: '13px', color: '#9ca3af' }}>未绑定本地文件</span>
+              )}
+
+              {boundFolderName ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void handleQuickDeploy()}
+                    disabled={isDeployingFolder}
+                    style={{ padding: '5px 12px', background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', cursor: isDeployingFolder ? 'not-allowed' : 'pointer', opacity: isDeployingFolder ? 0.7 : 1 }}
+                  >
+                    {isDeployingFolder ? '部署中...' : '⚡ 快速重新部署'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleBindFolder()}
+                    style={{ padding: '5px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}
+                  >
+                    更换文件夹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleUnbindFolder()}
+                    style={{ padding: '5px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '13px', cursor: 'pointer', color: '#9ca3af' }}
+                  >
+                    解绑
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to={`/deploy?uploader=${encodeURIComponent(game.user_name)}&gameSlug=${encodeURIComponent(game.id.split('/').slice(1).join('/'))}&displayName=${encodeURIComponent(game.name)}`}
+                    style={{ padding: '5px 12px', background: 'var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '13px', textDecoration: 'none' }}
+                  >
+                    🔄 重新部署
+                  </Link>
+                  {isFSASupported() && (
+                    <button
+                      type="button"
+                      onClick={() => void handleBindFolder()}
+                      style={{ padding: '5px 12px', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '13px', cursor: 'pointer', color: '#4b5563' }}
+                    >
+                      📁 绑定文件夹（下次一键部署）
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

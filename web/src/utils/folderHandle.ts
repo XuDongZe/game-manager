@@ -111,3 +111,29 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | null>
     return null;
   }
 }
+
+const LS_PREFIX = "gm_source_";
+
+export function saveSourceName(gameId: string, sourceName: string): void {
+  try {
+    localStorage.setItem(LS_PREFIX + gameId, sourceName);
+  } catch {
+    // 静默失败
+  }
+}
+
+export function loadSourceName(gameId: string): string | null {
+  try {
+    return localStorage.getItem(LS_PREFIX + gameId);
+  } catch {
+    return null;
+  }
+}
+
+export function removeSourceName(gameId: string): void {
+  try {
+    localStorage.removeItem(LS_PREFIX + gameId);
+  } catch {
+    // 静默失败
+  }
+}
